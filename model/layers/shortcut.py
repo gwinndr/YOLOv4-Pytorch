@@ -1,0 +1,53 @@
+import torch
+import torch.nn as nn
+
+from utilities.constants import SHCT_DEFAULT_ACTIV
+
+# ShortcutLayer
+class ShortcutLayer(nn.Module):
+    """
+    ----------
+    Author: Damon Gwinn
+    ----------
+    - A darknet Shortcut layer
+    ----------
+    """
+
+    # __init__
+    def __init__(self, from_layer, activation=SHCT_DEFAULT_ACTIV):
+        super(ShortcutLayer, self).__init__()
+
+        self.from_layer = from_layer
+        self.activation = activation
+
+        # TODO: Add more activations
+        if((self.activation != "linear") and (self.activation is not None)):
+            print("ShortcutLayer: Warning: Ignoring unrecognized activation:", self.activation)
+
+    # get_from_layer
+    def get_from_layer(self):
+        """
+        ----------
+        Author: Damon Gwinn
+        ----------
+        - Gets the layer index for shortcutting (residual connection), can be negative
+        ----------
+        """
+
+        return self.from_layer
+
+    # forward
+    def forward(self, x, output_from_layer):
+        """
+        ----------
+        Author: Damon Gwinn
+        ----------
+        - Runs the shortcut (residual connection)
+        - Must give output from the layer specified by from_layer
+        ----------
+        """
+
+        res = x + output_from_layer
+
+        # TODO: Add more activations
+        return res
