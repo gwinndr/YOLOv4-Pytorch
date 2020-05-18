@@ -17,6 +17,9 @@ class ShortcutLayer(nn.Module):
     def __init__(self, from_layer, activation=SHCT_DEFAULT_ACTIV):
         super(ShortcutLayer, self).__init__()
 
+        self.has_learnable_params = False
+        self.requires_layer_outputs = True
+
         self.from_layer = from_layer
         self.activation = activation
 
@@ -24,8 +27,8 @@ class ShortcutLayer(nn.Module):
         if((self.activation != "linear") and (self.activation is not None)):
             print("ShortcutLayer: Warning: Ignoring unrecognized activation:", self.activation)
 
-    # get_from_layer
-    def get_from_layer(self):
+    # get_required_layers
+    def get_required_layers(self):
         """
         ----------
         Author: Damon Gwinn
@@ -34,10 +37,10 @@ class ShortcutLayer(nn.Module):
         ----------
         """
 
-        return self.from_layer
+        return (self.from_layer,)
 
     # forward
-    def forward(self, x, output_from_layer):
+    def forward(self, x, layer_outputs):
         """
         ----------
         Author: Damon Gwinn
@@ -46,6 +49,7 @@ class ShortcutLayer(nn.Module):
         - Must give output from the layer specified by from_layer
         ----------
         """
+        output_from_layer = layer_outputs[0]
 
         res = x + output_from_layer
 

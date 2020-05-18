@@ -19,6 +19,9 @@ class ConvolutionalLayer(nn.Module):
             padding=CONV_DEFAULT_PAD, activation=CONV_DEFAULT_ACTIV):
         super(ConvolutionalLayer, self).__init__()
 
+        self.has_learnable_params = True
+        self.requires_layer_outputs = False
+
         self.size = size
         self.stride = stride
         self.out_channels = out_channels
@@ -31,7 +34,10 @@ class ConvolutionalLayer(nn.Module):
         else:
             self.padding = 0
 
-        conv = nn.Conv2d(in_channels, out_channels, size, stride=stride, padding=self.padding)
+        # Only one bias term which is applied to conv if no bn, bn otherwise
+        bias = not batch_normalize
+
+        conv = nn.Conv2d(in_channels, out_channels, size, stride=stride, padding=self.padding, bias=bias)
         self.sequential.add_module("conv_2d", conv)
 
         # TODO: Are the default hyperparameters in Pytorch BatchNorm the same in Darknet?
@@ -48,6 +54,7 @@ class ConvolutionalLayer(nn.Module):
         elif((activation != "linear") and (activation is not None)):
                 print("ConvolutionalLayer: WARNING: Ignoring unrecognized activation:", activation)
 
+
     # forward
     def forward(self, x):
         """
@@ -59,3 +66,72 @@ class ConvolutionalLayer(nn.Module):
         """
 
         return self.sequential(x)
+
+    # load_weights
+    def load_weights(self, weight_data, start_pos=0):
+        """
+        ----------
+        Author: Damon Gwinn
+        ----------
+        - Loads weights in weight_data starting at start_pos
+        - Returns the new position in the list after loading all needed weights
+        ----------
+        """
+
+        cur_pos = start_pos
+        conv = self.sequential[0]
+
+        if(self.batch_normalize):
+            bn = self.sequential[1]
+
+            # Number of weight parameters
+            n_bias = bn.bias.numel()
+            n_weights = bn.weight.numel()
+            n_running_mean = bn.running_mean.numel()
+            n_running_var = bn.running_var.numel()
+            print(n_bias, n_weights, n_running_mean, n_running_var)
+
+            # Loading some numbers
+            bn_bias = torch.from_numpy(weight_data[cur_pos : cur_pos + n_bias])
+            cur_pos += n_bias
+
+            bn_weights = torch.from_numpy(weight_data[cur_pos : cur_pos + n_weights])
+            cur_pos += n_weights
+
+            bn_running_mean = torch.from_numpy(weight_data[cur_pos : cur_pos + n_running_mean])
+            cur_pos += n_running_mean
+
+            bn_running_var = torch.from_numpy(weight_data[cur_pos : cur_pos + n_running_var])
+            cur_pos += n_running_var
+
+            # Shaping numbers into pytorch form
+            bn_bias = bn_bias.view_as(bn.bias.data)
+            bn_weights = bn_weights.view_as(bn.weight.data)
+            bn_running_mean = bn_running_mean.view_as(bn.running_mean.data)
+            bn_running_var = bn_running_var.view_as(bn.running_var.data)
+
+            bn.bias.data.copy_(bn_bias)
+            bn.weight.data.copy_(bn_weights)
+            bn.running_mean.data.copy_(bn_running_mean)
+            bn.running_var.data.copy_(bn_running_var)
+
+        # Just a bias for convolutional
+        else:
+            n_bias = conv.bias.numel()
+
+            conv_bias = torch.from_numpy(weight_data[cur_pos : cur_pos + n_bias])
+            cur_pos += n_bias
+
+            conv_bias = conv_bias.view_as(conv.bias.data)
+            conv.bias.data.copy_(conv_bias)
+
+        # Load weights for conv_2d
+        n_weights = conv.weight.numel()
+
+        conv_weights = torch.from_numpy(weight_data[cur_pos : cur_pos + n_weights])
+        cur_pos += n_weights
+
+        conv_weights = conv_weights.view_as(conv.weight.data)
+        conv.weight.data.copy_(conv_weights)
+
+        return cur_pos

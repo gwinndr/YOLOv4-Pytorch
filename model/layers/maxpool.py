@@ -15,6 +15,9 @@ class MaxpoolLayer(nn.Module):
     def __init__(self, size, stride):
         super(MaxpoolLayer, self).__init__()
 
+        self.has_learnable_params = False
+        self.requires_layer_outputs = False
+
         self.size = size
         self.stride = stride
 

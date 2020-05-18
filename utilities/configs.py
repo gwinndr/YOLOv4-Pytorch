@@ -93,43 +93,29 @@ def parse_blocks_into_model(blocks):
     ----------
     Author: Damon Gwinn
     ----------
-    - Parses a list of blocks and returns the darknet model (present on CPU)
+    - Parses a list of blocks and returns the darknet model
+    - Model defaults on CPU
     ----------
     """
 
     net_block = None
     darknet_model = None
+    layer_output_channels = []
     module_list = nn.ModuleList()
 
-    cur_channel_count = START_CHANNEL_COUNT
+    # Config must start with net block
+    net_block = blocks[0]
+    if(net_block[DARKNET_CONFIG_BLOCK_TYPE] != "net"):
+        print("parse_blocks_into_model: Error: Config file must start with [net] block.")
+        return None
 
-    for block in blocks:
-        block_type = block[DARKNET_CONFIG_BLOCK_TYPE]
+    layer_count = 0
+    for block in blocks[1:]:
+        layer, out_channels = parse_block(block, layer_output_channels, layer_count)
 
-        # net block
-        if(block_type == "net"):
-            if(net_block is not None):
-                print("parse_blocks_into_model: WARNING: Multiple [net] blocks found. Ignoring repeat blocks.")
-            else:
-                net_block = block
-
-        elif(block_type == "convolutional"):
-            conv_layer, cur_channel_count = parse_convolutional_block(block, cur_channel_count)
-            module_list.append(conv_layer)
-        elif(block_type == "maxpool"):
-            module_list.append( parse_maxpool_block(block) )
-        elif(block_type == "route"):
-            module_list.append( parse_route_block(block) )
-        elif(block_type == "shortcut"):
-            module_list.append( parse_shortcut_block(block) )
-        elif(block_type == "upsample"):
-            module_list.append( parse_upsample_block(block) )
-        elif(block_type == "yolo"):
-            module_list.append( parse_yolo_block(block) )
-
-        # Unrecognized
-        else:
-            print("parse_blocks_into_model: WARNING: Ignoring unrecognized block type:", block_type)
+        module_list.append(layer)
+        layer_output_channels.append(out_channels)
+        layer_count += 1
 
     # end for
 
@@ -139,9 +125,71 @@ def parse_blocks_into_model(blocks):
 
     return darknet_model
 
+# parse_block
+def parse_block(block, layer_output_channels, layer_idx):
+    """
+    ----------
+    Author: Damon Gwinn
+    ----------
+    - Parses a block into a darknet layer
+    - Needs a list of all previous layer output channels
+    - Returns the parsed layer and its output_channels
+    - Output channels for the layer can be None if no output
+    ----------
+    """
+
+    block_type = block[DARKNET_CONFIG_BLOCK_TYPE]
+    parsed_layer = None
+    out_channels = None
+
+    # The incoming channel count (some layers don't use this)
+    if(len(layer_output_channels) == 0):
+        cur_channels = START_CHANNEL_COUNT
+    else:
+        cur_channels = layer_output_channels[-1]
+
+    # Convolutional
+    if(block_type == "convolutional"):
+        parsed_layer, out_channels = parse_convolutional_block(block, cur_channels, layer_idx)
+
+    # Maxpool
+    elif(block_type == "maxpool"):
+        parsed_layer = parse_maxpool_block(block, layer_idx)
+        out_channels = cur_channels
+
+    # Route
+    elif(block_type == "route"):
+        parsed_layer, out_channels = parse_route_block(block, layer_output_channels, layer_idx)
+
+    # Shortcut
+    elif(block_type == "shortcut"):
+        parsed_layer =  parse_shortcut_block(block, layer_idx)
+        out_channels = cur_channels
+
+    # Upsample
+    elif(block_type == "upsample"):
+        parsed_layer = parse_upsample_block(block, layer_idx)
+        out_channels = cur_channels
+
+    # Yolo
+    elif(block_type == "yolo"):
+        parsed_layer = parse_yolo_block(block, layer_idx)
+        out_channels = None # Yolo layers do not have an output
+
+    # Invalid net block
+    elif(block_type == "net"):
+        print("parse_block: Error on layer idx", layer_idx, ": Should only be one [net] block at the very start of the config")
+
+    # Unrecognized
+    else:
+        print("parse_blocks_into_model: Error on layer idx", layer_idx, ": Unrecognized block type:", block_type)
+
+
+    return parsed_layer, out_channels
+
 
 # parse_convolutional_block
-def parse_convolutional_block(block, in_channels):
+def parse_convolutional_block(block, in_channels, layer_idx):
     """
     ----------
     Author: Damon Gwinn
@@ -158,6 +206,8 @@ def parse_convolutional_block(block, in_channels):
     stride = None
     pad = CONV_DEFAULT_PAD
     activation = CONV_DEFAULT_ACTIV
+
+    error_state = False
 
     # Filling in values
     for k, v in block.items():
@@ -176,10 +226,10 @@ def parse_convolutional_block(block, in_channels):
         elif(k == "activation"):
             activation = v
         else:
-            print("parse_convolutional_block: WARNING: Ignoring unrecognized block key:", k)
+            print("parse_convolutional_block: Error on layer_idx", layer_idx, ": Unrecognized block key:", k)
+            error_state = True
 
     # Validation
-    error_state = False
     if(out_channels is None):
         print("parse_convolutional_block: Error: Missing 'filters' entry")
         error_state = True
@@ -197,7 +247,7 @@ def parse_convolutional_block(block, in_channels):
     return conv_layer, out_channels
 
 # parse_maxpool_block
-def parse_maxpool_block(block):
+def parse_maxpool_block(block, layer_idx):
     """
     ----------
     Author: Damon Gwinn
@@ -211,6 +261,8 @@ def parse_maxpool_block(block):
     size = None
     stride = None
 
+    error_state = False
+
     # Filling in values
     for k, v in block.items():
         if(k == DARKNET_CONFIG_BLOCK_TYPE):
@@ -220,17 +272,17 @@ def parse_maxpool_block(block):
         elif(k == "stride"):
             stride = int(v)
         else:
-            print("parse_maxpool_block: WARNING: Ignoring unrecognized block key:", k)
+            print("parse_maxpool_block: Error on layer_idx", layer_idx, ": Unrecognized block key:", k)
+            error_state = True
 
     # end for
 
     # Validation
-    error_state = False
     if(size is None):
-        print("parse_maxpool_block: Error: Missing 'size' entry")
+        print("parse_maxpool_block: Error on layer_idx", layer_idx, ": Missing 'size' entry")
         error_state = True
     if(stride is None):
-        print("parse_maxpool_block: Error: Missing 'stride' entry")
+        print("parse_maxpool_block: Error on layer_idx", layer_idx, ": Missing 'stride' entry")
         error_state = True
 
     # Setting up MaxpoolLayer
@@ -240,7 +292,7 @@ def parse_maxpool_block(block):
     return maxpool_layer
 
 # parse_route_block
-def parse_route_block(block):
+def parse_route_block(block, layer_output_channels, layer_idx):
     """
     ----------
     Author: Damon Gwinn
@@ -250,8 +302,11 @@ def parse_route_block(block):
     """
 
     route_layer = None
+    out_channels = None
 
     layers = None
+
+    error_state = False
 
     # Filling in values
     for k, v in block.items():
@@ -260,24 +315,29 @@ def parse_route_block(block):
         elif(k == "layers"):
             layers = [int(l.strip()) for l in v.split(",")]
         else:
-            print("parse_route_block: WARNING: Ignoring unrecognized block key:", k)
+            print("parse_route_block: Error on layer_idx", layer_idx, ": Unrecognized block key:", k)
+            error_state = True
 
     # end for
 
     # Validation
-    error_state = False
     if(layers is None):
-        print("parse_route_block: Error: Missing 'layers' entry")
+        print("parse_route_block: Error on layer_idx", layer_idx, ": Missing 'layers' entry")
         error_state = True
 
     # Setting up RouteLayer
     if(not error_state):
         route_layer = RouteLayer(layers)
+        out_channels = 0
+        for l in layers:
+            out_channels += layer_output_channels[l]
 
-    return route_layer
+    # end if
+
+    return route_layer, out_channels
 
 # parse_shortcut_block
-def parse_shortcut_block(block):
+def parse_shortcut_block(block, layer_idx):
     """
     ----------
     Author: Damon Gwinn
@@ -291,6 +351,8 @@ def parse_shortcut_block(block):
     from_entry = None
     activation = SHCT_DEFAULT_ACTIV
 
+    error_state = False
+
     # Filling in values
     for k, v in block.items():
         if(k == DARKNET_CONFIG_BLOCK_TYPE):
@@ -300,14 +362,14 @@ def parse_shortcut_block(block):
         elif(k == "activation"):
             activation = v
         else:
-            print("parse_shortcut_block: WARNING: Ignoring unrecognized block key:", k)
+            print("parse_shortcut_block: Error on layer_idx", layer_idx, ": Unrecognized block key:", k)
+            error_state = True
 
     # end for
 
     # Validation
-    error_state = False
     if(from_entry is None):
-        print("parse_shortcut_block: Error: Missing 'from' entry")
+        print("parse_shortcut_block: Error on layer_idx", layer_idx, ": Missing 'from' entry")
         error_state = True
 
     # Setting up ShortcutLayer
@@ -317,7 +379,7 @@ def parse_shortcut_block(block):
     return shortcut_layer
 
 # parse_upsample_block
-def parse_upsample_block(block):
+def parse_upsample_block(block, layer_idx):
     """
     ----------
     Author: Damon Gwinn
@@ -330,6 +392,8 @@ def parse_upsample_block(block):
 
     stride = None
 
+    error_state = False
+
     # Filling in values
     for k, v in block.items():
         if(k == DARKNET_CONFIG_BLOCK_TYPE):
@@ -337,14 +401,14 @@ def parse_upsample_block(block):
         elif(k == "stride"):
             stride = int(v)
         else:
-            print("parse_upsample_block: WARNING: Ignoring unrecognized block key:", k)
+            print("parse_upsample_block: Error on layer_idx", layer_idx, ": Unrecognized block key:", k)
+            error_state = True
 
     # end for
 
     # Validation
-    error_state = False
     if(stride is None):
-        print("parse_upsample_block: Error: Missing 'stride' entry")
+        print("parse_upsample_block: Error on layer_idx", layer_idx, ": Missing 'stride' entry")
         error_state = True
 
     # Setting up UpsampleLayer
@@ -354,7 +418,7 @@ def parse_upsample_block(block):
     return upsample_layer
 
 # parse_yolo_block
-def parse_yolo_block(block):
+def parse_yolo_block(block, layer_idx):
     """
     ----------
     Author: Damon Gwinn
@@ -373,6 +437,8 @@ def parse_yolo_block(block):
     ignore_thresh = None
     truth_thresh = None
     random = None
+
+    error_state = False
 
     # Filling in values
     for k, v in block.items():
@@ -395,7 +461,7 @@ def parse_yolo_block(block):
         elif(k == "anchors"):
             anchors_temp = [int(m) for m in v.split(",")]
             if(len(anchors_temp) % 2 != 0):
-                print("parse_yolo_block: Error: All anchors must have width and height")
+                print("parse_yolo_block: Error on layer_idx", layer_idx, ": All anchors must have width and height")
                 return None
 
             i = 0
@@ -407,32 +473,32 @@ def parse_yolo_block(block):
                 i += 2
 
         else:
-            print("parse_yolo_block: WARNING: Ignoring unrecognized block key:", k)
+            print("parse_yolo_block: Error on layer_idx", layer_idx, ": Unrecognized block key:", k)
+            error_state = True
 
     # end for
 
     # Validation (NOTE: Ignoring truth_thresh since it is unused in actual yolo)
-    error_state = False
     if(mask is None):
-        print("parse_yolo_block: Error: Missing 'mask' entry")
+        print("parse_yolo_block: Error on layer_idx", layer_idx, ": Missing 'mask' entry")
         error_state = True
     if(anchors is None):
-        print("parse_yolo_block: Error: Missing 'anchors' entry")
+        print("parse_yolo_block: Error on layer_idx", layer_idx, ": Missing 'anchors' entry")
         error_state = True
     if(classes is None):
-        print("parse_yolo_block: Error: Missing 'classes' entry")
+        print("parse_yolo_block: Error on layer_idx", layer_idx, ": Missing 'classes' entry")
         error_state = True
     if(num is None):
-        print("parse_yolo_block: Error: Missing 'num' entry")
+        print("parse_yolo_block: Error on layer_idx", layer_idx, ": Missing 'num' entry")
         error_state = True
     if(jitter is None):
-        print("parse_yolo_block: Error: Missing 'jitter' entry")
+        print("parse_yolo_block: Error on layer_idx", layer_idx, ": Missing 'jitter' entry")
         error_state = True
     if(ignore_thresh is None):
-        print("parse_yolo_block: Error: Missing 'ignore_thresh' entry")
+        print("parse_yolo_block: Error on layer_idx", layer_idx, ": Missing 'ignore_thresh' entry")
         error_state = True
     if(random is None):
-        print("parse_yolo_block: Error: Missing 'random' entry")
+        print("parse_yolo_block: Error on layer_idx", layer_idx, ": Missing 'random' entry")
         error_state = True
 
     # More validation and extraction

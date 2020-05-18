@@ -1,6 +1,8 @@
 import torch
 import torch.nn as nn
 
+from utilities.constants import CHANNEL_DIM
+
 # RouteLayer
 class RouteLayer(nn.Module):
     """
@@ -15,28 +17,32 @@ class RouteLayer(nn.Module):
     def __init__(self, layers):
         super(RouteLayer, self).__init__()
 
+        self.has_learnable_params = False
+        self.requires_layer_outputs = True
+
         self.layers = layers
 
-    # get_route_layers
-    def get_route_layers(self):
+    # get_required_layers
+    def get_required_layers(self):
         """
         ----------
         Author: Damon Gwinn
         ----------
-        - Absolute indices of the routed (concatentated depth-wise) layers
+        - Indices of the routed (concatentated depth-wise) layers
         ----------
         """
 
         return self.layers
 
     # forward
-    def forward(self, layer_outputs):
+    def forward(self, x, layer_outputs):
         """
         ----------
         Author: Damon Gwinn
         ----------
         - Runs the route layer
         - Must give a list of layer outputs specified by layers
+        - For compatibility, takes in an x input, but does not use it
         ----------
         """
 

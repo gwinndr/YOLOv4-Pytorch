@@ -9,13 +9,17 @@ class YoloLayer(nn.Module):
     Author: Damon Gwinn
     ----------
     - A darknet Yolo layer
-    - Seriously though, why is jitter and random in this layer? It makes no sense...
+    - Seriously though, why is jitter and random in this layer? It makes no sense, so you'll
+      find these values on the net block
     ----------
     """
 
     # __init__
     def __init__(self, anchors, n_classes, ignore_thresh, truth_thresh):
         super(YoloLayer, self).__init__()
+
+        self.has_learnable_params = False
+        self.requires_layer_outputs = False
 
         self.anchors = anchors
         self.n_classes = n_classes

@@ -17,6 +17,9 @@ class UpsampleLayer(nn.Module):
     def __init__(self, stride):
         super(UpsampleLayer, self).__init__()
 
+        self.has_learnable_params = False
+        self.requires_layer_outputs = False
+
         self.stride = stride
         self.upsample = nn.Upsample(scale_factor=self.stride, mode=UPSAMPLE_MODE)
 
