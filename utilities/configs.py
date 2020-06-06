@@ -200,12 +200,12 @@ def parse_convolutional_block(block, in_channels, layer_idx):
 
     conv_layer = None
 
-    batch_normalize = CONV_DEFAULT_BN
+    batch_normalize = CONV_BN
     filters = None
     size = None
     stride = None
-    pad = CONV_DEFAULT_PAD
-    activation = CONV_DEFAULT_ACTIV
+    pad = CONV_PAD
+    activation = CONV_ACTIV
 
     error_state = False
 
@@ -349,7 +349,7 @@ def parse_shortcut_block(block, layer_idx):
     shortcut_layer = None
 
     from_entry = None
-    activation = SHCT_DEFAULT_ACTIV
+    activation = SHCT_ACTIV
 
     error_state = False
 
@@ -433,10 +433,18 @@ def parse_yolo_block(block, layer_idx):
     anchors = None
     classes = None
     num = None
-    jitter = None
+    jitter = YOLO_JITTER
     ignore_thresh = None
     truth_thresh = None
-    random = None
+    random = YOLO_RANDOM
+    scale_xy = YOLO_SCALEXY
+    iou_thresh = YOLO_IOU_THRESH
+    cls_norm = YOLO_CLS_NORM
+    iou_norm = YOLO_IOU_NORM
+    iou_loss = YOLO_IOU_LOSS
+    nms_kind = YOLO_NMS_KIND
+    beta_nms = YOLO_BETA_NMS
+    max_delta = YOLO_MAX_DELTA
 
     error_state = False
 
@@ -458,6 +466,22 @@ def parse_yolo_block(block, layer_idx):
             truth_thresh = float(v)
         elif(k == "random"):
             random = bool(int(v))
+        elif(k == "scale_x_y"):
+            scale_xy = float(v)
+        elif(k == "iou_thresh"):
+            iou_thresh = float(v)
+        elif(k == "cls_normalizer"):
+            cls_norm = float(v)
+        elif(k == "iou_normalizer"):
+            iou_norm = float(v)
+        elif(k == "iou_loss"):
+            iou_loss = v
+        elif(k == "nms_kind"):
+            nms_kind = v
+        elif(k == "beta_nms"):
+            beta_nms = float(v)
+        elif(k == "max_delta"):
+            beta_nms = int(v)
         elif(k == "anchors"):
             anchors_temp = [int(m) for m in v.split(",")]
             if(len(anchors_temp) % 2 != 0):
@@ -491,14 +515,8 @@ def parse_yolo_block(block, layer_idx):
     if(num is None):
         print("parse_yolo_block: Error on layer_idx", layer_idx, ": Missing 'num' entry")
         error_state = True
-    if(jitter is None):
-        print("parse_yolo_block: Error on layer_idx", layer_idx, ": Missing 'jitter' entry")
-        error_state = True
     if(ignore_thresh is None):
         print("parse_yolo_block: Error on layer_idx", layer_idx, ": Missing 'ignore_thresh' entry")
-        error_state = True
-    if(random is None):
-        print("parse_yolo_block: Error on layer_idx", layer_idx, ": Missing 'random' entry")
         error_state = True
 
     # More validation and extraction
@@ -514,6 +532,8 @@ def parse_yolo_block(block, layer_idx):
 
     # Setting up YoloLayer
     if(not error_state):
-        yolo_layer = YoloLayer(anchors_masked, classes, ignore_thresh, truth_thresh)
+        yolo_layer = YoloLayer(anchors_masked, classes, ignore_thresh, truth_thresh, random,
+                                jitter, scale_xy, iou_thresh, cls_norm, iou_norm, iou_loss,
+                                nms_kind, beta_nms, max_delta)
 
     return yolo_layer

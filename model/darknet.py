@@ -11,7 +11,7 @@ class Darknet(nn.Module):
     Author: Damon Gwinn
     ----------
     - The darknet model
-    - Supports Yolov3 training and inferencing
+    - Supports Yolov4 training and inferencing
     ----------
     """
 
@@ -125,6 +125,7 @@ def extract_layer_outputs(cur_layer, layers, layer_count_dict, layer_output_dict
     ----------
     - Extracts given layers into a list of outputs from those layers
     - Automatically removes layer outputs from memory when layer_dict counter goes to 0
+    - Used to get layer outputs needed for layers such as shortcut and route
     ----------
     """
 

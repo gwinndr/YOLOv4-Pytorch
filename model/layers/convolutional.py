@@ -3,6 +3,8 @@ import torch.nn as nn
 
 from utilities.constants import *
 
+from model.activations.mish import Mish
+
 # ConvolutionalLayer
 class ConvolutionalLayer(nn.Module):
     """
@@ -15,8 +17,8 @@ class ConvolutionalLayer(nn.Module):
     """
 
     # __init__
-    def __init__(self, in_channels, out_channels, size, stride, batch_normalize=CONV_DEFAULT_BN,
-            padding=CONV_DEFAULT_PAD, activation=CONV_DEFAULT_ACTIV):
+    def __init__(self, in_channels, out_channels, size, stride, batch_normalize=CONV_BN,
+            padding=CONV_PAD, activation=CONV_ACTIV):
         super(ConvolutionalLayer, self).__init__()
 
         self.has_learnable_params = True
@@ -49,6 +51,11 @@ class ConvolutionalLayer(nn.Module):
         if(activation == "leaky"):
             leaky = nn.LeakyReLU(negative_slope=YOLO_LEAKY_SLOPE, inplace=True)
             self.sequential.add_module("leaky_relu", leaky)
+
+        # Mish
+        elif(activation == "mish"):
+            mish = Mish()
+            self.sequential.add_module("mish", mish)
 
         # Error case
         elif((activation != "linear") and (activation is not None)):
@@ -89,7 +96,7 @@ class ConvolutionalLayer(nn.Module):
             n_weights = bn.weight.numel()
             n_running_mean = bn.running_mean.numel()
             n_running_var = bn.running_var.numel()
-            print(n_bias, n_weights, n_running_mean, n_running_var)
+            # print(n_bias, n_weights, n_running_mean, n_running_var)
 
             # Loading some numbers
             bn_bias = torch.from_numpy(weight_data[cur_pos : cur_pos + n_bias])
@@ -109,6 +116,12 @@ class ConvolutionalLayer(nn.Module):
             bn_weights = bn_weights.view_as(bn.weight.data)
             bn_running_mean = bn_running_mean.view_as(bn.running_mean.data)
             bn_running_var = bn_running_var.view_as(bn.running_var.data)
+            # print(":")
+            # print(self.out_channels)
+            # print(bn_bias.shape)
+            # print(bn_weights.shape)
+            # print(bn_running_mean.shape)
+            # print(bn_running_var.shape)
 
             bn.bias.data.copy_(bn_bias)
             bn.weight.data.copy_(bn_weights)

@@ -1,7 +1,10 @@
 import torch
 
+from utilities.constants import *
+
+from utilities.devices import gpu_device_name
 from utilities.configs import parse_config
-# from utilities.weights import load_weights
+from utilities.weights import load_weights
 
 # main
 def main():
@@ -13,19 +16,31 @@ def main():
     ----------
     """
 
-    config_path = "./configs/yolov3.cfg"
+    config_path = "./configs/yolov4.cfg"
+    weight_path = "./weights/yolov4.weights"
+
+    print("Parsing config into model...")
     model = parse_config(config_path)
     model.cuda()
 
-    print(torch.cuda.get_device_name(device=None))
+    print("Loading weights...")
+    version, imgs_seen = load_weights(model, weight_path)
 
-    x = torch.rand((1,3,320,320)).cuda()
+    print("")
+    print(SEPARATOR)
+    print("DARKNET")
+    print("GPU:", gpu_device_name())
+    print("Config:", config_path)
+    print("Weights:", weight_path)
+    print("Version:", ".".join([str(v) for v in version]))
+    print("Images seen:", imgs_seen)
+    print(SEPARATOR)
+    print("")
 
+    x = torch.rand([1,3,320,320]).cuda()
     detections = model(x)
     for detection in detections:
         print(detection.shape)
-
-    # load_weights(model, "./weights/yolov3.weights")
 
 
 if __name__ == "__main__":

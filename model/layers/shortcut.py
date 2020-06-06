@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from utilities.constants import SHCT_DEFAULT_ACTIV
+from utilities.constants import SHCT_ACTIV
 
 # ShortcutLayer
 class ShortcutLayer(nn.Module):
@@ -14,7 +14,7 @@ class ShortcutLayer(nn.Module):
     """
 
     # __init__
-    def __init__(self, from_layer, activation=SHCT_DEFAULT_ACTIV):
+    def __init__(self, from_layer, activation=SHCT_ACTIV):
         super(ShortcutLayer, self).__init__()
 
         self.has_learnable_params = False

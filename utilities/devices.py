@@ -2,6 +2,7 @@
 #### ONLY USE PROVIDED FUNCTIONS, DO NOT USE GLOBAL CONSTANTS ####
 
 import torch
+import platform
 
 TORCH_CPU_DEVICE = torch.device("cpu")
 
@@ -43,6 +44,24 @@ def get_device():
         return TORCH_CPU_DEVICE
     else:
         return TORCH_CUDA_DEVICE
+
+        
+# gpu_device_name
+def gpu_device_name():
+    """
+    ----------
+    Author: Damon Gwinn
+    ----------
+    - Gets the name of the gpu
+    - Gives the string "None" if no gpu or it is not being used
+    ----------
+    """
+
+    if((not USE_CUDA) or (TORCH_CUDA_DEVICE is None)):
+        return "None"
+    else:
+        return torch.cuda.get_device_name()
+
 
 # cuda_device
 def cuda_device():
