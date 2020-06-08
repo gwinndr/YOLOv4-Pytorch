@@ -10,6 +10,26 @@ from model.layers.shortcut import ShortcutLayer
 from model.layers.upsample import UpsampleLayer
 from model.layers.yolo import YoloLayer
 
+# parse_names
+def parse_names(names_path):
+    """
+    ----------
+    Author: Damon Gwinn
+    ----------
+    - Parses a names file into a list where each index has the name of the corresponding class prediction
+    - File should have each class name on each line in order of class prediction index
+    ----------
+    """
+
+    with open(names_path, "r") as i_stream:
+        lines = i_stream.readlines()
+
+    lines = [line.strip() for line in lines]
+    lines = [line for line in lines if line]
+
+    return lines
+
+
 # parse_config
 def parse_config(config_path):
     """

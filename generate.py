@@ -1,10 +1,12 @@
 import torch
+import cv2
 
 from utilities.constants import *
 
-from utilities.devices import gpu_device_name
-from utilities.configs import parse_config
+from utilities.devices import gpu_device_name, get_device
+from utilities.configs import parse_config, parse_names
 from utilities.weights import load_weights
+from utilities.preprocess import letterbox_image, image_to_tensor
 
 # main
 def main():
@@ -37,10 +39,32 @@ def main():
     print(SEPARATOR)
     print("")
 
-    x = torch.rand([1,3,320,320]).cuda()
+    image = cv2.imread("./examples/eagle.jpg")
+    image2 = cv2.imread("./examples/giraffe.jpg")
+
+    class_names = parse_names("./configs/coco.names")
+
+    letterbox = letterbox_image(image, 512)
+    letterbox2 = letterbox_image(image2, 512)
+
+    # cv2.imshow("image", image)
+    # cv2.waitKey(0)
+    # cv2.imshow("image", letterbox)
+    # cv2.waitKey(0)
+
+    x = torch.stack([image_to_tensor(letterbox), image_to_tensor(letterbox2)])
+
     detections = model(x)
     for detection in detections:
-        print(detection.shape)
+        for i,batch in enumerate(detection):
+            print("IMG:", i)
+            for xy in batch:
+                for anchor in xy:
+                    if(anchor[YOLO_OBJ] > 0.75):
+                        # print(anchor[YOLO_CLASS_START:])
+                        score, class_idx = anchor[YOLO_CLASS_START:].max(0)
+                        print(class_names[class_idx])
+                        # print(class_names[int(class_idx)])
 
 
 if __name__ == "__main__":

@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 import copy
 
+from utilities.constants import *
+
 from .layers.yolo import YoloLayer
 
 # Darknet
@@ -36,11 +38,12 @@ class Darknet(nn.Module):
         detections = []
         layer_count_dict = copy.deepcopy(self.layer_outputs_needed)
         saved_outputs = dict()
+        input_dim = x.shape[X_DIM]
 
         for i, module in enumerate(self.layer_modules):
             # Running the model layer
             if(isinstance(module, YoloLayer)):
-                detections.append(module(x))
+                detections.append(module(x, input_dim))
                 # return detections
 
             elif(module.requires_layer_outputs):
