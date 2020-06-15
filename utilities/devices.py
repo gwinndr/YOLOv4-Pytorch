@@ -19,7 +19,7 @@ USE_CUDA = True
 def use_cuda(cuda_bool):
     """
     ----------
-    Author: Damon Gwinn
+    Author: Damon Gwinn (gwinndr)
     ----------
     Sets whether to use CUDA (if available), or use the CPU (not recommended)
     If this function is not called, the default is to use CUDA if available
@@ -33,10 +33,10 @@ def use_cuda(cuda_bool):
 def get_device():
     """
     ----------
-    Author: Damon Gwinn
+    Author: Damon Gwinn (gwinndr)
     ----------
     Grabs the default device.
-    Default device is CUDA if available and use_cuda is True, CPU otherwise.
+    Default device is CUDA if available and USE_CUDA is True, CPU otherwise.
     ----------
     """
 
@@ -45,12 +45,12 @@ def get_device():
     else:
         return TORCH_CUDA_DEVICE
 
-        
+
 # gpu_device_name
 def gpu_device_name():
     """
     ----------
-    Author: Damon Gwinn
+    Author: Damon Gwinn (gwinndr)
     ----------
     - Gets the name of the gpu
     - Gives the string "None" if no gpu or it is not being used
@@ -67,7 +67,7 @@ def gpu_device_name():
 def cuda_device():
     """
     ----------
-    Author: Damon Gwinn
+    Author: Damon Gwinn (gwinndr)
     ----------
     Grabs the cuda device (may be None if CUDA is not available)
     ----------
@@ -79,7 +79,7 @@ def cuda_device():
 def cpu_device():
     """
     ----------
-    Author: Damon Gwinn
+    Author: Damon Gwinn (gwinndr)
     ----------
     Grabs the cpu device
     ----------

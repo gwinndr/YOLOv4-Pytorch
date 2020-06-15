@@ -9,7 +9,7 @@ from model.activations.mish import Mish
 class ConvolutionalLayer(nn.Module):
     """
     ----------
-    Author: Damon Gwinn
+    Author: Damon Gwinn (gwinndr)
     ----------
     - A darknet Convolutional Layer
     - If padding is true, zero padding is applied as (size - 1) // 2 to preserve dimensions
@@ -42,7 +42,7 @@ class ConvolutionalLayer(nn.Module):
         conv = nn.Conv2d(in_channels, out_channels, size, stride=stride, padding=self.padding, bias=bias)
         self.sequential.add_module("conv_2d", conv)
 
-        # TODO: Are the default hyperparameters in Pytorch BatchNorm the same in Darknet?
+        # Batch Normalizations
         if(batch_normalize):
             bn = nn.BatchNorm2d(out_channels)
             self.sequential.add_module("batch_norm", bn)
@@ -66,7 +66,7 @@ class ConvolutionalLayer(nn.Module):
     def forward(self, x):
         """
         ----------
-        Author: Damon Gwinn
+        Author: Damon Gwinn (gwinndr)
         ----------
         - Runs the convolutional layer on the given input
         ----------
@@ -78,7 +78,7 @@ class ConvolutionalLayer(nn.Module):
     def load_weights(self, weight_data, start_pos=0):
         """
         ----------
-        Author: Damon Gwinn
+        Author: Damon Gwinn (gwinndr)
         ----------
         - Loads weights in weight_data starting at start_pos
         - Returns the new position in the list after loading all needed weights

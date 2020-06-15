@@ -5,12 +5,13 @@ import copy
 from utilities.constants import *
 
 from .layers.yolo import YoloLayer
+from .layers.convolutional import ConvolutionalLayer
 
 # Darknet
 class Darknet(nn.Module):
     """
     ----------
-    Author: Damon Gwinn
+    Author: Damon Gwinn (gwinndr)
     ----------
     - The darknet model
     - Supports Yolov4 training and inferencing
@@ -25,26 +26,33 @@ class Darknet(nn.Module):
         self.net_block = net_block
         self.layer_outputs_needed = generate_required_layer_dict(layer_modules)
 
+        self.yolo_layers = []
+        for l in self.layer_modules:
+            if(isinstance(l, YoloLayer)):
+                self.yolo_layers.append(l)
+
     # forward
     def forward(self, x):
         """
         ----------
-        Author: Damon Gwinn
+        Author: Damon Gwinn (gwinndr)
         ----------
         - Runs the given input through the Yolo model
-        - Eval mode: Returns detections
+        - Eval mode: Returns predictions (will need to run utilities.postprocess.extract_detections)
         ----------
         """
-        detections = []
+        predictions = []
         layer_count_dict = copy.deepcopy(self.layer_outputs_needed)
         saved_outputs = dict()
         input_dim = x.shape[X_DIM]
 
+        # print("INPUT:", x[0,0,0,0])
+
         for i, module in enumerate(self.layer_modules):
             # Running the model layer
             if(isinstance(module, YoloLayer)):
-                detections.append(module(x, input_dim))
-                # return detections
+                predictions.append(module(x, input_dim))
+                # return predictions
 
             elif(module.requires_layer_outputs):
                 req_layers = module.get_required_layers()
@@ -55,18 +63,22 @@ class Darknet(nn.Module):
             else:
                 x = module(x)
 
+            # f = ": %.2f" % float(x[0,0,0,0])
+            # print(i, type(module).__name__, f)
+
             # Saving needed outputs
             if(i in layer_count_dict.keys()):
                 saved_outputs[i] = x
 
-        return detections
+        predictions = torch.cat(predictions, dim=YOLO_OUT_N_PREDS_DIM)
+        return predictions
 
 
     # get_net_block
     def get_net_block(self):
         """
         ----------
-        Author: Damon Gwinn
+        Author: Damon Gwinn (gwinndr)
         ----------
         - Returns the net_block
         - net_block is a dictionary containing all key-value pairs under the [net] heading
@@ -74,6 +86,18 @@ class Darknet(nn.Module):
         """
 
         return self.net_block
+
+    # get_yolo_layers
+    def get_yolo_layers(self):
+        """
+        ----------
+        Author: Damon Gwinn (gwinndr)
+        ----------
+        - Gets yolo layers in order
+        ----------
+        """
+
+        return self.yolo_layers
 
     # get_layers
     def get_layers(self):
@@ -124,7 +148,7 @@ def generate_required_layer_dict(layer_modules):
 def extract_layer_outputs(cur_layer, layers, layer_count_dict, layer_output_dict):
     """
     ----------
-    Author: Damon Gwinn
+    Author: Damon Gwinn (gwinndr)
     ----------
     - Extracts given layers into a list of outputs from those layers
     - Automatically removes layer outputs from memory when layer_dict counter goes to 0

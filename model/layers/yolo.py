@@ -9,7 +9,7 @@ from utilities.devices import get_device
 class YoloLayer(nn.Module):
     """
     ----------
-    Author: Damon Gwinn
+    Author: Damon Gwinn (gwinndr)
     ----------
     - A darknet Yolo layer
     ----------
@@ -33,46 +33,52 @@ class YoloLayer(nn.Module):
 
         self.scale_xy = scale_xy
 
+        self.nms_kind = nms_kind
+        self.beta_nms = beta_nms
+
     # forward
     def forward(self, x, input_dim):
         """
         ----------
-        Author: Damon Gwinn
+        Author: Damon Gwinn (gwinndr)
         ----------
-        - YoloLayer, just a placeholder for now
+        - YoloLayer, extracts predictions
+
+        - When in detection mode, returns predictions filtered out by specified NMS type
+        - All detections are returned regardless of object score and will need to be thresholded
+        - TX, TY, TW, and TH are already set to the correct bbox dimensions according to the input image
+          size and will require no post-processing.
         ----------
         """
 
-        grid_size = x.shape[X_DIM]
-        grid_stride = input_dim // grid_size
+        grid_dim = x.shape[X_DIM]
+        grid_stride = input_dim // grid_dim
 
         batch_num = x.shape[BATCH_DIM]
         attrs_per_anchor = self.n_classes + YOLO_N_BBOX_ATTRS
         n_anchors = len(self.anchors)
-        n_grid = grid_size * grid_size
+        grid_size = grid_dim * grid_dim
 
         anchors = [(anc[0] / grid_stride, anc[1]/ grid_stride) for anc in self.anchors]
         anchors = torch.tensor(anchors, device=get_device())
 
-        # Moving channel dimension to the back to make matrix operations easier to perform
-        # TODO: This makes the tensor non-continuous. Is there a way to do this better?
-        # I'll try different methods and compare performance. I'll leave this for now.
-        x = x.view(batch_num, n_anchors, attrs_per_anchor, n_grid)
+        # Combining grid_dims into one vector
+        # Moving the grid_size to the second dimension for easier matrix operations
+        # Forces a memory copy due to non-contiguous memory (TODO, can we make it so this is not needed?)
+        x = x.view(batch_num, n_anchors, attrs_per_anchor, grid_size)
+        x = x.permute(0,3,1,2).contiguous()
 
-        # Moving the grid_size to the second dimension
-        # Makes it easier to do matrix operations (NOTE: No longer contiguous)
-        x = x.permute(0,3,1,2)
 
-        grid = torch.arange(start=0, end=grid_size, step=1, device=get_device())
+        grid = torch.arange(start=0, end=grid_dim, step=1, device=get_device())
         y_offset, x_offset = torch.meshgrid(grid,grid)
-        x_offset = x_offset.flatten().repeat(n_anchors,1).permute(1,0)
-        y_offset = y_offset.flatten().repeat(n_anchors,1).permute(1,0)
 
-        # print(x_offset.shape)
-        # print(grid_size)
-        # print(x_offset[...,2])
-        # print(y_offset[...,2])
+        x_offset = x_offset.flatten()
+        y_offset = y_offset.flatten()
 
+        # The permute is to help pytorch broadcast to each detection properly
+        # expand is like repeat but shares memory
+        x_offset = x_offset.expand(n_anchors, -1).permute(1,0)
+        y_offset = y_offset.expand(n_anchors, -1).permute(1,0)
 
         x[..., YOLO_TX:YOLO_TY+1] = \
             torch.sigmoid(x[..., YOLO_TX:YOLO_TY+1]) * self.scale_xy - (self.scale_xy - 1) / 2
@@ -83,7 +89,11 @@ class YoloLayer(nn.Module):
 
         x[..., YOLO_TX] += x_offset
         x[..., YOLO_TY] += y_offset
-        x[..., YOLO_TX:YOLO_OBJ] *= grid_stride
 
+        x[..., YOLO_TX:YOLO_TH+1] *= grid_stride
+
+        # Combining the anchor and grid dimensions
+        x = x.view(batch_num, grid_size*n_anchors, attrs_per_anchor)
+        # print(x.shape)
 
         return x

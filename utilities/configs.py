@@ -14,7 +14,7 @@ from model.layers.yolo import YoloLayer
 def parse_names(names_path):
     """
     ----------
-    Author: Damon Gwinn
+    Author: Damon Gwinn (gwinndr)
     ----------
     - Parses a names file into a list where each index has the name of the corresponding class prediction
     - File should have each class name on each line in order of class prediction index
@@ -34,7 +34,7 @@ def parse_names(names_path):
 def parse_config(config_path):
     """
     ----------
-    Author: Damon Gwinn
+    Author: Damon Gwinn (gwinndr)
     ----------
     - Parses a darknet configuration file and returns a pytorch darknet model
     - Pytorch darknet model also contains the network_block
@@ -67,7 +67,7 @@ def parse_config(config_path):
 def parse_lines_into_blocks(lines):
     """
     ----------
-    Author: Damon Gwinn
+    Author: Damon Gwinn (gwinndr)
     ----------
     - Parses given lines into a list of blocks in order they appear
     ----------
@@ -111,7 +111,7 @@ def parse_lines_into_blocks(lines):
 def parse_blocks_into_model(blocks):
     """
     ----------
-    Author: Damon Gwinn
+    Author: Damon Gwinn (gwinndr)
     ----------
     - Parses a list of blocks and returns the darknet model
     - Model defaults on CPU
@@ -149,7 +149,7 @@ def parse_blocks_into_model(blocks):
 def parse_block(block, layer_output_channels, layer_idx):
     """
     ----------
-    Author: Damon Gwinn
+    Author: Damon Gwinn (gwinndr)
     ----------
     - Parses a block into a darknet layer
     - Needs a list of all previous layer output channels
@@ -212,7 +212,7 @@ def parse_block(block, layer_output_channels, layer_idx):
 def parse_convolutional_block(block, in_channels, layer_idx):
     """
     ----------
-    Author: Damon Gwinn
+    Author: Damon Gwinn (gwinndr)
     ----------
     - Parses convolutional block into a ConvolutionalLayer
     ----------
@@ -270,7 +270,7 @@ def parse_convolutional_block(block, in_channels, layer_idx):
 def parse_maxpool_block(block, layer_idx):
     """
     ----------
-    Author: Damon Gwinn
+    Author: Damon Gwinn (gwinndr)
     ----------
     - Parses maxpool block into a MaxpoolLayer
     ----------
@@ -315,7 +315,7 @@ def parse_maxpool_block(block, layer_idx):
 def parse_route_block(block, layer_output_channels, layer_idx):
     """
     ----------
-    Author: Damon Gwinn
+    Author: Damon Gwinn (gwinndr)
     ----------
     - Parses route block into a RouteLayer
     ----------
@@ -360,7 +360,7 @@ def parse_route_block(block, layer_output_channels, layer_idx):
 def parse_shortcut_block(block, layer_idx):
     """
     ----------
-    Author: Damon Gwinn
+    Author: Damon Gwinn (gwinndr)
     ----------
     - Parses shortcut block into a ShortcutLayer
     ----------
@@ -402,7 +402,7 @@ def parse_shortcut_block(block, layer_idx):
 def parse_upsample_block(block, layer_idx):
     """
     ----------
-    Author: Damon Gwinn
+    Author: Damon Gwinn (gwinndr)
     ----------
     - Parses upsample block into a UpsampleLayer
     ----------
@@ -441,7 +441,7 @@ def parse_upsample_block(block, layer_idx):
 def parse_yolo_block(block, layer_idx):
     """
     ----------
-    Author: Damon Gwinn
+    Author: Damon Gwinn (gwinndr)
     ----------
     - Parses yolo block into a YoloLayer
     ----------
