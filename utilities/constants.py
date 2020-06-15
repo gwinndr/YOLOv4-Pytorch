@@ -3,15 +3,20 @@ import cv2
 
 ##### TWEAKABLE CONSTANTS #####
 # NN Constants
-START_CHANNEL_COUNT = 3 # How many channels in the input image
+IMG_CHANNEL_COUNT = 3 # How many channels in the input image
 YOLO_LEAKY_SLOPE = 0.1 # Slope for leaky relu
 UPSAMPLE_MODE = "nearest" # Type of interpolation for upsampling
-NMS_THRESHOLD = 0.45 # Threshold for considering two bounding boxes overlapping (IOU) for NMS
+NMS_THRESHOLD = 0.45 # Threshold for considering two bounding boxes overlapping (IOU) for NM
+CV2_INTERPOLATION = cv2.INTER_LINEAR # Interpolation method for resizing imagesS
+
+MISH_BETA = 1 # The beta for each mish activation
+MISH_THRESHOLD = 20 # The threshold for each mish activation
 
 LETTERBOX_DEFAULT = True
 INPUT_DIM_DEFAULT = 608
 
-CV2_INTERPOLATION = cv2.INTER_LINEAR # Interpolation method for resizing images
+# May experiment with precision stuff in future
+TORCH_FLOAT = torch.float32
 
 ##### BBOX DRAWING #####
 BBOX_COLORS = ( (255,0,255),(0,0,255),(0,255,255),(0,255,0),(255,255,0),(255,100,100) )
@@ -29,10 +34,6 @@ BBOX_TEXT_BOT_PAD = 6
 
 CV2_TEXT_SIZE_W = 0
 CV2_TEXT_SIZE_H = 1
-
-
-# May experiment with precision stuff in future
-TORCH_FLOAT = torch.float32
 
 ##### SUPPORTED NMS TYPES #####
 GREEDY_NMS = "greedynms"
@@ -66,16 +67,17 @@ YOLO_TX = 0
 YOLO_TY = 1
 YOLO_TW = 2
 YOLO_TH = 3
+
+# YOLO confidence scores
 YOLO_OBJ = 4
 YOLO_CLASS_START = 5
 
-# Raw output dimensions from yolo model when in detection mode
+# Raw output dimensions from yolo model when in eval mode
 YOLO_OUT_BATCH_DIM = 0
 YOLO_OUT_N_PREDS_DIM = 1
 YOLO_OUT_ATTRS_DIM = 2
 
-# Output from detections extracted from Yolo
-# Output is a list of tensors representing each batch
+# Output order for each extracted yolo detection
 DETECTION_X1 = 0
 DETECTION_Y1 = 1
 DETECTION_X2 = 2
@@ -103,10 +105,10 @@ CHANNEL_DIM = 1
 X_DIM = 2
 Y_DIM = 3
 
-CV2_W_DIM = 1
 CV2_H_DIM = 0
+CV2_W_DIM = 1
 CV2_C_DIM = 2
-CV2_N_IMG_DIM = 3
+CV2_N_DIMS = 3
 
 INPUT_C_DIM = 0
 INPUT_H_DIM = 1

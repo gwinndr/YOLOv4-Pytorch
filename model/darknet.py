@@ -103,7 +103,7 @@ class Darknet(nn.Module):
     def get_layers(self):
         """
         ----------
-        Author: Damon Gwinn
+        Author: Damon Gwinn (gwinndr)
         ----------
         - Returns module_list of layers
         ----------
@@ -116,7 +116,7 @@ class Darknet(nn.Module):
 def generate_required_layer_dict(layer_modules):
     """
     ----------
-    Author: Damon Gwinn
+    Author: Damon Gwinn (gwinndr)
     ----------
     - Returns a dictionary mapping layer numbers to the number of layers that need them
     - Used for tracking when outputs are needed more than once to save on memory

@@ -5,7 +5,7 @@ import torch.nn as nn
 class MaxpoolLayer(nn.Module):
     """
     ----------
-    Author: Damon Gwinn
+    Author: Damon Gwinn (gwinndr)
     ----------
     - A darknet Maxpool layer
     ----------
@@ -29,7 +29,7 @@ class MaxpoolLayer(nn.Module):
     def forward(self, x):
         """
         ----------
-        Author: Damon Gwinn
+        Author: Damon Gwinn (gwinndr)
         ----------
         - Runs maxpooling on given input
         ----------

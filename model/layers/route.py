@@ -7,7 +7,7 @@ from utilities.constants import CHANNEL_DIM
 class RouteLayer(nn.Module):
     """
     ----------
-    Author: Damon Gwinn
+    Author: Damon Gwinn (gwinndr)
     ----------
     - A darknet Route layer
     ----------
@@ -26,7 +26,7 @@ class RouteLayer(nn.Module):
     def get_required_layers(self):
         """
         ----------
-        Author: Damon Gwinn
+        Author: Damon Gwinn (gwinndr)
         ----------
         - Indices of the routed (concatentated depth-wise) layers
         ----------
@@ -38,7 +38,7 @@ class RouteLayer(nn.Module):
     def forward(self, x, layer_outputs):
         """
         ----------
-        Author: Damon Gwinn
+        Author: Damon Gwinn (gwinndr)
         ----------
         - Runs the route layer
         - Must give a list of layer outputs specified by layers

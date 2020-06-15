@@ -7,7 +7,7 @@ from utilities.constants import *
 class UpsampleLayer(nn.Module):
     """
     ----------
-    Author: Damon Gwinn
+    Author: Damon Gwinn (gwinndr)
     ----------
     - A darknet Upsample layer
     ----------
@@ -27,7 +27,7 @@ class UpsampleLayer(nn.Module):
     def forward(self, x):
         """
         ----------
-        Author: Damon Gwinn
+        Author: Damon Gwinn (gwinndr)
         ----------
         - Runs upsampling on given input
         ----------

@@ -164,7 +164,7 @@ def parse_block(block, layer_output_channels, layer_idx):
 
     # The incoming channel count (some layers don't use this)
     if(len(layer_output_channels) == 0):
-        cur_channels = START_CHANNEL_COUNT
+        cur_channels = IMG_CHANNEL_COUNT
     else:
         cur_channels = layer_output_channels[-1]
 

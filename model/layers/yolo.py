@@ -59,23 +59,22 @@ class YoloLayer(nn.Module):
         n_anchors = len(self.anchors)
         grid_size = grid_dim * grid_dim
 
-        anchors = [(anc[0] / grid_stride, anc[1]/ grid_stride) for anc in self.anchors]
+        anchors = [(anc[0] / grid_stride, anc[1] / grid_stride) for anc in self.anchors]
         anchors = torch.tensor(anchors, device=get_device())
 
         # Combining grid_dims into one vector
         # Moving the grid_size to the second dimension for easier matrix operations
-        # Forces a memory copy due to non-contiguous memory (TODO, can we make it so this is not needed?)
         x = x.view(batch_num, n_anchors, attrs_per_anchor, grid_size)
         x = x.permute(0,3,1,2).contiguous()
 
-
+        # Grid offsets for each grid cell
         grid = torch.arange(start=0, end=grid_dim, step=1, device=get_device())
         y_offset, x_offset = torch.meshgrid(grid,grid)
 
         x_offset = x_offset.flatten()
         y_offset = y_offset.flatten()
 
-        # The permute is to help pytorch broadcast to each detection properly
+        # The permute is to help pytorch broadcast offsets to each grid cell properly
         # expand is like repeat but shares memory
         x_offset = x_offset.expand(n_anchors, -1).permute(1,0)
         y_offset = y_offset.expand(n_anchors, -1).permute(1,0)
@@ -90,10 +89,10 @@ class YoloLayer(nn.Module):
         x[..., YOLO_TX] += x_offset
         x[..., YOLO_TY] += y_offset
 
+        # Converting values from grid-relative to image-relative
         x[..., YOLO_TX:YOLO_TH+1] *= grid_stride
 
         # Combining the anchor and grid dimensions
         x = x.view(batch_num, grid_size*n_anchors, attrs_per_anchor)
-        # print(x.shape)
 
         return x

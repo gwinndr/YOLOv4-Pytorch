@@ -7,7 +7,7 @@ from utilities.constants import SHCT_ACTIV
 class ShortcutLayer(nn.Module):
     """
     ----------
-    Author: Damon Gwinn
+    Author: Damon Gwinn (gwinndr)
     ----------
     - A darknet Shortcut layer
     ----------
@@ -31,7 +31,7 @@ class ShortcutLayer(nn.Module):
     def get_required_layers(self):
         """
         ----------
-        Author: Damon Gwinn
+        Author: Damon Gwinn (gwinndr)
         ----------
         - Gets the layer index for shortcutting (residual connection), can be negative
         ----------
@@ -43,7 +43,7 @@ class ShortcutLayer(nn.Module):
     def forward(self, x, layer_outputs):
         """
         ----------
-        Author: Damon Gwinn
+        Author: Damon Gwinn (gwinndr)
         ----------
         - Runs the shortcut (residual connection)
         - Must give output from the layer specified by from_layer

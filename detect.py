@@ -6,8 +6,8 @@ from utilities.constants import *
 from utilities.devices import gpu_device_name, get_device, use_cuda
 from utilities.configs import parse_config, parse_names
 from utilities.weights import load_weights
-from utilities.preprocess import preprocess_image, tensor_to_image
-from utilities.postprocess import extract_detections, get_bbox_image, bbox_letterbox_to_image
+from utilities.images import preprocess_image_eval, tensor_to_image, map_dets_to_original_image, write_dets_to_image
+from utilities.extract_detections import extract_detections
 
 # main
 def main():
@@ -49,15 +49,15 @@ def main():
         print(SEPARATOR)
         print("")
 
-        # image = cv2.imread("./examples/eagle.jpg")
-        image = cv2.imread("./examples/whale_tiger.jpg")
+        image = cv2.imread("./examples/eagle.jpg")
+        # image = cv2.imread("./examples/whale_tiger.jpg")
         image2 = cv2.imread("./examples/giraffe.jpg")
         # print(image.shape)
 
         obj_threshold = 0.25
 
-        letterbox = preprocess_image(image, 608, letterbox=True)
-        letterbox2 = preprocess_image(image2, 608, letterbox=True)
+        letterbox = preprocess_image_eval(image, 608, letterbox=True)
+        letterbox2 = preprocess_image_eval(image2, 608, letterbox=True)
 
         # cv2.imshow("image", image)
         # cv2.waitKey(0)
@@ -74,14 +74,14 @@ def main():
         # cv2.imshow("image", new_image)
         # cv2.waitKey(0)
 
-        detections[0] = bbox_letterbox_to_image(detections[0], image.shape[0], image.shape[1], 608)
-        new_image = get_bbox_image(detections[0], image, class_names, verbose_output=True)
+        detections[0] = map_dets_to_original_image(detections[0], image.shape[0], image.shape[1], 608)
+        new_image = write_dets_to_image(detections[0], image, class_names, verbose_output=True)
         # detections[1] = bbox_letterbox_to_image(detections[1], image2.shape[0], image2.shape[1], 608)
         # new_image = get_bbox_image(detections[1], image2, class_names)
 
-        # cv2.imshow("image", new_image)
-        # cv2.waitKey(0)
-        cv2.imwrite("./detection.png", new_image)
+        cv2.imshow("image", new_image)
+        cv2.waitKey(0)
+        # cv2.imwrite("./detection.png", new_image)
 
 
         # for detection in detections:
