@@ -7,13 +7,28 @@ START_CHANNEL_COUNT = 3 # How many channels in the input image
 YOLO_LEAKY_SLOPE = 0.1 # Slope for leaky relu
 UPSAMPLE_MODE = "nearest" # Type of interpolation for upsampling
 NMS_THRESHOLD = 0.45 # Threshold for considering two bounding boxes overlapping (IOU) for NMS
-# NMS_THRESHOLD = 1.5
 
 LETTERBOX_DEFAULT = True
 INPUT_DIM_DEFAULT = 608
 
-# CV2 Constants
 CV2_INTERPOLATION = cv2.INTER_LINEAR # Interpolation method for resizing images
+
+##### BBOX DRAWING #####
+BBOX_COLORS = ( (255,0,255),(0,0,255),(0,255,255),(0,255,0),(255,255,0),(255,100,100) )
+COLOR_BLACK = (0,0,0)
+BBOX_FONT = cv2.FONT_HERSHEY_SIMPLEX
+BBOX_RECT_THICKNESS = 2
+BBOX_FONT_SCALE = 0.8
+BBOX_FONT_THICKNESS = 1
+CV2_RECT_FILL = -1
+
+BBOX_TEXT_LEFT_PAD = 2
+BBOX_TEXT_RIGHT_PAD = 2
+BBOX_TEXT_TOP_PAD = 5
+BBOX_TEXT_BOT_PAD = 6
+
+CV2_TEXT_SIZE_W = 0
+CV2_TEXT_SIZE_H = 1
 
 
 # May experiment with precision stuff in future

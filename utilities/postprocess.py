@@ -1,4 +1,5 @@
 import torch
+import random
 
 from utilities.constants import *
 
@@ -21,7 +22,7 @@ def extract_detections(all_preds, yolo_layers, obj_thresh=YOLO_OBJ_THRESH):
     return all_detections
 
 # get_bbox_image
-def get_bbox_image(detections, image, class_names):
+def get_bbox_image(detections, image, class_names, verbose_output=False):
     image = image.copy()
 
     bboxes = detections[..., DETECTION_X1:DETECTION_Y2+1].cpu().numpy()
@@ -40,25 +41,34 @@ def get_bbox_image(detections, image, class_names):
         class_name = class_names[classes[i]]
         class_conf = class_confs[i]
 
-        print("")
-        print(SEPARATOR)
-        print("Class:", class_name)
-        print("Conf: %.2f" % class_conf)
-        print("Left_x:", x1)
-        print("Left_y:", y1)
-        print("Width:", x2-x1)
-        print("Height:", y2-y1)
-        print(SEPARATOR)
-        print("")
+        if(verbose_output):
+            print("Class:", class_name)
+            print("Conf: %.2f" % class_conf)
+            print("Left_x:", x1)
+            print("Left_y:", y1)
+            print("Width:", x2-x1)
+            print("Height:", y2-y1)
+            print("")
 
         label = "%s %.2f" % (class_name, class_conf)
 
-        color = (255,0,0)
-        cv2.rectangle(image, p1, p2, color, 1)
-        t_size = cv2.getTextSize(label, cv2.FONT_HERSHEY_PLAIN, 1 , 1)[0]
-        c2 = p1[0] + t_size[0] + 3, p1[1] + t_size[1] + 4
-        cv2.rectangle(image, p1, c2, color, -1)
-        cv2.putText(image, label, (p1[0], p1[1] + t_size[1] + 4), cv2.FONT_HERSHEY_PLAIN, 1, [225,255,255], 1);
+        color = random.choice(BBOX_COLORS)
+        cv2.rectangle(image, p1, p2, color, BBOX_RECT_THICKNESS)
+
+        t_dims = cv2.getTextSize(label, BBOX_FONT, BBOX_FONT_SCALE, BBOX_FONT_THICKNESS)[0]
+
+        label_rect_x1 = x1
+        label_rect_y1 = y1 - t_dims[CV2_TEXT_SIZE_H] - (BBOX_TEXT_TOP_PAD + BBOX_TEXT_BOT_PAD)
+        label_rect_x2 = x1 + t_dims[CV2_TEXT_SIZE_W] + (BBOX_TEXT_LEFT_PAD + BBOX_TEXT_RIGHT_PAD)
+        label_rect_y2 = y1
+
+        label_rect_p1 = (label_rect_x1, label_rect_y1)
+        label_rect_p2 = (label_rect_x2, label_rect_y2)
+
+        cv2.rectangle(image, label_rect_p1, label_rect_p2, color, CV2_RECT_FILL)
+
+        label_text_p = (x1 + BBOX_TEXT_LEFT_PAD, y1 - BBOX_TEXT_BOT_PAD)
+        cv2.putText(image, label, label_text_p, BBOX_FONT, BBOX_FONT_SCALE, COLOR_BLACK, BBOX_FONT_THICKNESS);
 
     return image
 
@@ -78,7 +88,7 @@ def bbox_letterbox_to_image(detections, img_h, img_w, letter_dim):
     start_h = (letter_dim - new_h) // 2
     start_w = (letter_dim - new_w) // 2
 
-    # Move image back to top left
+    # Move embedded image back to top left
     detections[..., DETECTION_X1] -= start_w
     detections[..., DETECTION_Y1] -= start_h
     detections[..., DETECTION_X2] -= start_w
@@ -168,6 +178,7 @@ def greedy_nms_inplace(preds, nms_thresh=NMS_THRESHOLD):
     - Greedy nms forces the lower of two same class probabilities to 0 if the IOU between their respective
       bounding boxes is greater than NMS_THRESHOLD
     - Done in place on preds
+    - Assumed that given predictions already have class scores multiplied by objectness
     ----------
     """
 

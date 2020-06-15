@@ -49,7 +49,8 @@ def main():
         print(SEPARATOR)
         print("")
 
-        image = cv2.imread("./examples/eagle.jpg")
+        # image = cv2.imread("./examples/eagle.jpg")
+        image = cv2.imread("./examples/whale_tiger.jpg")
         image2 = cv2.imread("./examples/giraffe.jpg")
         # print(image.shape)
 
@@ -69,17 +70,18 @@ def main():
         detections = extract_detections(predictions, model.get_yolo_layers())
 
         # new_image = get_bbox_image(detections[0], tensor_to_image(letterbox), class_names)
-        new_image = get_bbox_image(detections[1], tensor_to_image(letterbox2), class_names)
-        cv2.imshow("image", new_image)
-        cv2.waitKey(0)
+        # new_image = get_bbox_image(detections[1], tensor_to_image(letterbox2), class_names)
+        # cv2.imshow("image", new_image)
+        # cv2.waitKey(0)
 
-        # detections[0] = bbox_letterbox_to_image(detections[0], image.shape[0], image.shape[1], 608)
-        # new_image = get_bbox_image(detections[0], image, class_names)
-        detections[1] = bbox_letterbox_to_image(detections[1], image2.shape[0], image2.shape[1], 608)
-        new_image = get_bbox_image(detections[1], image2, class_names)
+        detections[0] = bbox_letterbox_to_image(detections[0], image.shape[0], image.shape[1], 608)
+        new_image = get_bbox_image(detections[0], image, class_names, verbose_output=True)
+        # detections[1] = bbox_letterbox_to_image(detections[1], image2.shape[0], image2.shape[1], 608)
+        # new_image = get_bbox_image(detections[1], image2, class_names)
 
-        cv2.imshow("image", new_image)
-        cv2.waitKey(0)
+        # cv2.imshow("image", new_image)
+        # cv2.waitKey(0)
+        cv2.imwrite("./detection.png", new_image)
 
 
         # for detection in detections:
