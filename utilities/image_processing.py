@@ -135,7 +135,10 @@ def write_dets_to_image(detections, image, class_names, verbose_output=False):
             print("Height:", y2-y1)
             print("")
 
-        label = "%s %.2f" % (class_name, class_conf)
+        if(BBOX_INCLUDE_CLASS_CONF):
+            label = "%s %.2f" % (class_name, class_conf)
+        else:
+            label = class_name
 
         # Drawing the full bounding box
         color = random.choice(BBOX_COLORS)
