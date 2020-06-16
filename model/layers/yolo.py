@@ -34,7 +34,6 @@ class YoloLayer(nn.Module):
         self.scale_xy = scale_xy
 
         self.nms_kind = nms_kind
-        self.beta_nms = beta_nms
 
     # forward
     def forward(self, x, input_dim):
@@ -96,3 +95,17 @@ class YoloLayer(nn.Module):
         x = x.view(batch_num, grid_size*n_anchors, attrs_per_anchor)
 
         return x
+
+    # to_string
+    def to_string(self):
+        """
+        ----------
+        Author: Damon Gwinn (gwinndr)
+        ----------
+        - Converts this layer into a human-readable string
+        ----------
+        """
+
+        return \
+            "YOLO: ignore: %.2f  truth: %.2f  scalexy: %.2f  nms_t: %s" % \
+            (self.ignore_thresh, self.truth_thresh, self.scale_xy, self.nms_kind)

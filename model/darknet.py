@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import copy
+import sys
 
 from utilities.constants import *
 
@@ -111,6 +112,28 @@ class Darknet(nn.Module):
 
         return self.layer_modules
 
+    # print_network
+    def print_network(self, f=sys.stdout):
+        """
+        ----------
+        Author: Damon Gwinn (gwinndr)
+        ----------
+        - Prints each layer of this darknet model
+        ----------
+        """
+
+        print(SEPARATOR, file=f)
+        print("START NETWORK PRINT:", file=f)
+        print("", file=f)
+        for i, module in enumerate(self.layer_modules):
+            print("   ", i, ":::", module.to_string(), file=f)
+
+        print("", file=f)
+        print("END NETWORK PRINT:", file=f)
+        print(SEPARATOR, file=f)
+        print("", file=f)
+
+        return
 
 # generate_required_layer_dict
 def generate_required_layer_dict(layer_modules):

@@ -3,7 +3,6 @@ import cv2
 
 ##### TWEAKABLE CONSTANTS #####
 # NN Constants
-IMG_CHANNEL_COUNT = 3 # How many channels in the input image
 YOLO_LEAKY_SLOPE = 0.1 # Slope for leaky relu
 UPSAMPLE_MODE = "nearest" # Type of interpolation for upsampling
 NMS_THRESHOLD = 0.45 # Threshold for considering two bounding boxes overlapping (IOU) for NM
@@ -12,11 +11,15 @@ CV2_INTERPOLATION = cv2.INTER_LINEAR # Interpolation method for resizing imagesS
 MISH_BETA = 1 # The beta for each mish activation
 MISH_THRESHOLD = 20 # The threshold for each mish activation
 
+OBJ_THRESH_DEFAULT = 0.25
+
 LETTERBOX_DEFAULT = True
 INPUT_DIM_DEFAULT = 608
 
 # May experiment with precision stuff in future
 TORCH_FLOAT = torch.float32
+
+IMG_CHANNEL_COUNT = 3
 
 ##### BBOX DRAWING #####
 BBOX_COLORS = ( (255,0,255),(0,0,255),(0,255,255),(0,255,0),(255,255,0),(255,100,100) )

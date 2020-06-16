@@ -36,3 +36,17 @@ class MaxpoolLayer(nn.Module):
         """
 
         return self.maxpool(x)
+
+    # to_string
+    def to_string(self):
+        """
+        ----------
+        Author: Damon Gwinn (gwinndr)
+        ----------
+        - Converts this layer into a human-readable string
+        ----------
+        """
+        
+        return \
+            "MXPL: size: %d  stride: %d  pad: %d" % \
+            (self.size, self.stride, self.padding)

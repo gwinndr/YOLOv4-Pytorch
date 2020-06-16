@@ -69,8 +69,8 @@ def map_dets_to_original_image(detections, img_h, img_w, input_dim=INPUT_DIM_DEF
 
     # Setting information such that there is no letterbox (tensor contains the full image)
     else:
-        embed_h = target_dim
-        embed_w = target_dim
+        embed_h = input_dim
+        embed_w = input_dim
         start_y = 0
         start_x = 0
 

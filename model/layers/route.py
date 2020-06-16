@@ -51,3 +51,17 @@ class RouteLayer(nn.Module):
             return None
 
         return torch.cat(layer_outputs, dim=CHANNEL_DIM)
+
+    # to_string
+    def to_string(self):
+        """
+        ----------
+        Author: Damon Gwinn (gwinndr)
+        ----------
+        - Converts this layer into a human-readable string
+        ----------
+        """
+
+        return \
+            "ROUT: layers: %s" % \
+            (str(self.layers))

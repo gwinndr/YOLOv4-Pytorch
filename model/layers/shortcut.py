@@ -55,3 +55,17 @@ class ShortcutLayer(nn.Module):
 
         # TODO: Add more activations
         return res
+
+    # to_string
+    def to_string(self):
+        """
+        ----------
+        Author: Damon Gwinn (gwinndr)
+        ----------
+        - Converts this layer into a human-readable string
+        ----------
+        """
+
+        return \
+            "SHCT: layer: %d  activ: %s" % \
+            (self.from_layer, self.activation)

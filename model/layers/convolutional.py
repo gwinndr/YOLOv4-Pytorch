@@ -26,8 +26,10 @@ class ConvolutionalLayer(nn.Module):
 
         self.size = size
         self.stride = stride
+        self.in_channels = in_channels
         self.out_channels = out_channels
         self.batch_normalize = batch_normalize
+        self.activation = activation
 
         self.sequential = nn.Sequential()
 
@@ -148,3 +150,17 @@ class ConvolutionalLayer(nn.Module):
         conv.weight.data.copy_(conv_weights)
 
         return cur_pos
+
+    # to_string
+    def to_string(self):
+        """
+        ----------
+        Author: Damon Gwinn (gwinndr)
+        ----------
+        - Converts this layer into a human-readable string
+        ----------
+        """
+
+        return \
+            "CONV: size: %d  stride: %d  in_c: %d  out_c: %d  bn: %d  pad: %d  activ: %s" % \
+            (self.size, self.stride, self.in_channels, self.out_channels, self.batch_normalize, self.padding, self.activation)
