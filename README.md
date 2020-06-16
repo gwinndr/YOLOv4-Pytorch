@@ -30,5 +30,8 @@ python detect.py --help
 ### Bounding Boxes
 Look in utilities.constants under the BBOX DRAWING header to tweak how the bounding boxes are output. Everything from color selection to label padding can be tweaked to how you like it.
 
+## Contributing
+I am not currently accepting code contributions, but bug reports and feature requests are welcome.
+
 
 
