@@ -1,5 +1,5 @@
 # Darknet in Pytorch
-Currently supports Pytorch >= 1.5.0
+Currently supports Pytorch >= 1.5.0  
 Verified to work with Yolov4 and Yolov3
 
 ![Dog Detection](https://lh3.googleusercontent.com/7fDn_S03jrwJNxWoUIB46VIB2_LXiccuQtS-8Xf8Uk0ooghJV3IcQ_p_r2IoG_CuExD2CXzINWbKfXrW37Rp25O2fxh3WiU7DFVuQJtLVzlBYs4HAnXJKmTHlJLSYNnTRC9ACbd_vA=w2400 "Dog Detection")
