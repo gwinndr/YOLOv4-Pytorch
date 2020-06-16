@@ -1,5 +1,8 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
+
+from utilities.constants import *
 
 # MaxpoolLayer
 class MaxpoolLayer(nn.Module):
@@ -21,9 +24,27 @@ class MaxpoolLayer(nn.Module):
         self.size = size
         self.stride = stride
 
-        self.padding = (self.size - 1) // 2
+        # Set to true when size is even and stride is 1
+        self.special_pad = False
 
-        self.maxpool = nn.MaxPool2d(self.size, stride=self.stride, padding=self.padding)
+        # Have to handle even kernel sizes for yolov3-tiny
+        # May be more edge cases to handle (TODO)
+        # Fix thanks to Ayoosh Kathuria (https://github.com/ayooshkathuria/pytorch-yolo-v3)
+        if(self.size % 2 == 0):
+            if(self.stride == 1):
+                self.special_pad = True
+                self.padding = self.size - 1
+                self.maxpool = nn.MaxPool2d(self.size, stride=self.padding)
+            else:
+                self.padding = 0
+                self.maxpool = nn.MaxPool2d(self.size, stride=self.stride, padding=self.padding)
+
+        # The normal case which will be the vast majority of cases
+        else:
+            self.padding = (self.size - 1) // 2
+            self.maxpool = nn.MaxPool2d(self.size, stride=self.stride, padding=self.padding)
+
+
 
     # forward
     def forward(self, x):
@@ -34,6 +55,10 @@ class MaxpoolLayer(nn.Module):
         - Runs maxpooling on given input
         ----------
         """
+
+        if(self.special_pad):
+            pad_right_bottom = (0, self.padding, 0, self.padding)
+            x = F.pad(x, pad_right_bottom, mode=POOL_SPECIAL_PAD_MODE)
 
         return self.maxpool(x)
 
@@ -46,7 +71,7 @@ class MaxpoolLayer(nn.Module):
         - Converts this layer into a human-readable string
         ----------
         """
-        
+
         return \
             "MXPL: size: %d  stride: %d  pad: %d" % \
             (self.size, self.stride, self.padding)

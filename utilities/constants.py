@@ -51,6 +51,9 @@ CONV_ACTIV = "linear"
 ##### SHORTCUT CONSTANTS #####
 SHCT_ACTIV = "linear"
 
+##### MAXPOOL CONSTANTS #####
+POOL_SPECIAL_PAD_MODE = "replicate"
+
 ##### YOLO CONSTANTS #####
 # Layer init defaults
 YOLO_RANDOM = False
