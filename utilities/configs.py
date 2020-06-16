@@ -59,8 +59,6 @@ def parse_config(config_path):
     blocks = parse_lines_into_blocks(lines)
     model = parse_blocks_into_model(blocks)
 
-    model.cuda()
-
     return model
 
 # parse_lines_into_blocks
