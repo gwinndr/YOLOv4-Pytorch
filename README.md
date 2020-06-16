@@ -27,6 +27,15 @@ There are more arguments you can specify as well, to see the full argument list,
 python detect.py --help
 ```
 
+### Weights
+You will have to download pre-trained weights from Darknet. The download urls for currently supported models are listed below:
+* [Yolov4](https://github.com/AlexeyAB/darknet/releases/download/darknet_yolo_v3_optimal/yolov4.weights)
+* [Yolov3-spp](https://pjreddie.com/media/files/yolov3-spp.weights)
+* [Yolov3](https://pjreddie.com/media/files/yolov3.weights)
+* [Yolov3-tiny](https://pjreddie.com/media/files/yolov3-tiny.weights)
+
+The configurations for these models are already included in the configs folder. There is also a copy of the coco class names there.
+
 ### Bounding Boxes
 Look in utilities.constants under the BBOX DRAWING header to tweak how the bounding boxes are output. Everything from color selection to label padding can be tweaked to how you like it.
 
