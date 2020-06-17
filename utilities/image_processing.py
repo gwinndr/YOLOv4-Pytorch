@@ -1,7 +1,6 @@
 import torch
 import cv2
 import numpy as np
-import random
 
 from utilities.constants import *
 from utilities.devices import get_device
@@ -94,7 +93,7 @@ def map_dets_to_original_image(detections, img_h, img_w, input_dim=INPUT_DIM_DEF
 
     return detections
 
-# write_detections_to_image
+# write_dets_to_image
 def write_dets_to_image(detections, image, class_names, verbose_output=False):
     """
     ----------
@@ -141,7 +140,8 @@ def write_dets_to_image(detections, image, class_names, verbose_output=False):
             label = class_name
 
         # Drawing the full bounding box
-        color = random.choice(BBOX_COLORS)
+        # color = random.choice(BBOX_COLORS)
+        color = BBOX_COLORS[i]
         cv2.rectangle(image, p1, p2, color, BBOX_RECT_THICKNESS)
 
         # Getting the label text size
@@ -189,28 +189,6 @@ def get_letterbox_image_embedding(img_h, img_w, target_letterbox_dim):
 
     return embed_h, embed_w, start_y, start_x
 
-# image_to_tensor
-def image_to_tensor(image):
-    """
-    ----------
-    Author: Damon Gwinn (gwinndr)
-    ----------
-    - Converts cv2 image into a pytorch input tensor
-    - Helper function, recommended you use one of preprocess_image_eval or preprocess_image_train
-    ----------
-    """
-
-    # rgb
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-
-    # normalize
-    norm_image = image.astype(np.float32) / 255.0
-
-    # then convert to tensor
-    tensor = torch.tensor(norm_image, device=get_device(), dtype=TORCH_FLOAT)
-    tensor = tensor.permute(CV2_C_DIM, CV2_H_DIM, CV2_W_DIM).contiguous()
-    return tensor
-
 # tensor_to_image
 def tensor_to_image(tensor):
     """
@@ -234,3 +212,25 @@ def tensor_to_image(tensor):
     image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
 
     return image
+
+# image_to_tensor
+def image_to_tensor(image):
+    """
+    ----------
+    Author: Damon Gwinn (gwinndr)
+    ----------
+    - Converts cv2 image into a pytorch input tensor
+    - Helper function, recommended you use one of preprocess_image_eval or preprocess_image_train
+    ----------
+    """
+
+    # rgb
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+    # normalize
+    norm_image = image.astype(np.float32) / 255.0
+
+    # then convert to tensor
+    tensor = torch.tensor(norm_image, device=get_device(), dtype=TORCH_FLOAT)
+    tensor = tensor.permute(CV2_C_DIM, CV2_H_DIM, CV2_W_DIM).contiguous()
+    return tensor

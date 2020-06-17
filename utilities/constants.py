@@ -2,10 +2,13 @@ import torch
 import cv2
 
 ##### TWEAKABLE CONSTANTS #####
+# Modulus for printing out number of processed frames in detect.py
+DETECT_VIDEO_FRAME_MOD = 100
+
 # NN Constants
 YOLO_LEAKY_SLOPE = 0.1 # Slope for leaky relu
 UPSAMPLE_MODE = "nearest" # Type of interpolation for upsampling
-NMS_THRESHOLD = 0.45 # Threshold for considering two bounding boxes overlapping (IOU) for NM
+NMS_THRESHOLD = 0.45 # Threshold for considering two bounding boxes overlapping (IOU) for NMS
 CV2_INTERPOLATION = cv2.INTER_LINEAR # Interpolation method for resizing imagesS
 
 MISH_BETA = 1 # The beta for each mish activation
@@ -15,11 +18,6 @@ OBJ_THRESH_DEFAULT = 0.25
 
 LETTERBOX_DEFAULT = True
 INPUT_DIM_DEFAULT = 608
-
-# May experiment with precision stuff in future
-TORCH_FLOAT = torch.float32
-
-IMG_CHANNEL_COUNT = 3
 
 ##### BBOX DRAWING #####
 BBOX_INCLUDE_CLASS_CONF = True
@@ -107,6 +105,12 @@ LETTERBOX_COLOR = 0.5
 
 ##### MISC #####
 SEPARATOR = "========================="
+
+# May experiment with precision stuff in future
+TORCH_FLOAT = torch.float32
+IMG_CHANNEL_COUNT = 3
+
+CV2_IS_COLOR = True
 
 BATCH_DIM = 0
 CHANNEL_DIM = 1

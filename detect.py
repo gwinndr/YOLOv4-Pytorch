@@ -1,15 +1,17 @@
 import torch
-import cv2
 
 from utilities.constants import *
-from utilities.arguments import parse_detect_args
 
-from utilities.devices import gpu_device_name, get_device, use_cuda
+from utilities.arguments import parse_detect_args
 from utilities.configs import parse_config, parse_names
 from utilities.weights import load_weights
-from utilities.image_processing import preprocess_image_eval, tensor_to_image, map_dets_to_original_image, write_dets_to_image
-from utilities.extract_detections import extract_detections
-from utilities.file_reading import load_image
+
+
+from utilities.devices import gpu_device_name, get_device, use_cuda
+from utilities.file_reading import load_image, load_frame
+
+from utilities.inferencing import inference_on_single_image, inference_on_video
+from utilities.image_processing import write_dets_to_image
 
 # main
 def main():
@@ -17,7 +19,7 @@ def main():
     ----------
     Author: Damon Gwinn (gwinndr)
     ----------
-    - Entry point for generating labels on a given image, image folder, or video
+    - Entry point for generating labels on a given image
     ----------
     """
 
@@ -61,37 +63,42 @@ def main():
 
         # TODO
         network_dim = int(model.net_block["width"])
-
-        # Loading image
-        image = load_image(args.img)
-        if(image is None):
-            return
-
-        img_h = image.shape[CV2_H_DIM]
-        img_w = image.shape[CV2_W_DIM]
-
-        # Preprocessing
         letterbox = not args.no_letterbox
-        x = preprocess_image_eval(image, network_dim, letterbox).unsqueeze(0)
 
-        # Running the model
-        predictions = model(x)
+        ##### IMAGE DETECTION #####
+        if(not args.video):
+            image = load_image(args.input)
+            if(image is None):
+                return
 
-        # Extracting detections
-        detections = extract_detections(predictions, model.get_yolo_layers())
-        detections = detections[0]
-        detections = map_dets_to_original_image(detections, img_h, img_w, network_dim, letterbox)
+            detections = inference_on_single_image(model, image, network_dim, letterbox)
+            output_image = write_dets_to_image(detections, image, class_names, verbose_output=True)
 
-        # Putting detections on the image
-        new_image = write_dets_to_image(detections, image, class_names, verbose_output=True)
+            cv2.imwrite(args.output, output_image)
 
-        cv2.imwrite(args.output_img, new_image)
+            if(not args.no_show):
+                cv2.imshow("Detections", output_image)
+                cv2.waitKey(0)
 
-        if(not args.no_show):
-            cv2.imshow("Detections", new_image)
-            cv2.waitKey(0)
+        ##### VIDEO DETECTION #####
+        else:
+            video_in = cv2.VideoCapture(args.input)
+            if(video_in.isOpened()):
+                # Getting input video hyperparameters for the output video
+                vid_w  = int(video_in.get(cv2.CAP_PROP_FRAME_WIDTH))
+                vid_h = int(video_in.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                vid_dims = (vid_w, vid_h)
+                fourcc = int(video_in.get(cv2.CAP_PROP_FOURCC))
+                fps = int(video_in.get(cv2.CAP_PROP_FPS))
 
+                video_out = cv2.VideoWriter(args.output, fourcc, fps, vid_dims, CV2_IS_COLOR)
 
+                inference_on_video(model, video_in, video_out, class_names, network_dim, letterbox, DETECT_VIDEO_FRAME_MOD)
+
+                video_in.release()
+                video_out.release()
+
+    return
 
 if __name__ == "__main__":
     main()
