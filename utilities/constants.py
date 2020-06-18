@@ -2,9 +2,6 @@ import torch
 import cv2
 
 ##### TWEAKABLE CONSTANTS #####
-# Modulus for printing out number of processed frames in detect.py
-DETECT_VIDEO_FRAME_MOD = 100
-
 # NN Constants
 YOLO_LEAKY_SLOPE = 0.1 # Slope for leaky relu
 UPSAMPLE_MODE = "nearest" # Type of interpolation for upsampling
@@ -18,6 +15,16 @@ OBJ_THRESH_DEFAULT = 0.25
 
 LETTERBOX_DEFAULT = True
 INPUT_DIM_DEFAULT = 608
+
+# Benchmarking (MODEL_ONLY is equivalent to official darknet benchmark fps)
+NO_BENCHMARK = 0 # No benchmarking
+MODEL_ONLY = 1 # Fps running the model only (recommended)
+MODEL_WITH_PP = 2 # Fps running pre/post-processing + MODEL_ONLY
+MODEL_WITH_IO = 3 # Fps running file io + MODEL_WITH_PP
+
+# Number of times to run the model on a random image as a warmup
+BENCHMARK_N_WARMUPS = 25
+
 
 ##### BBOX DRAWING #####
 BBOX_INCLUDE_CLASS_CONF = True
@@ -131,3 +138,6 @@ BBOX_Y1 = 1
 BBOX_X2 = 2
 BBOX_Y2 = 3
 BBOX_N_ELEMS = 4
+
+# For printing on the same line using print
+CARRIAGE_RETURN = "\r"

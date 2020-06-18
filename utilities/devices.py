@@ -45,6 +45,21 @@ def get_device():
     else:
         return TORCH_CUDA_DEVICE
 
+# synchronize_device
+def synchronize_device():
+    """
+    ----------
+    Author: Damon Gwinn (gwinndr)
+    ----------
+    - Synchronizes queued tensor operations
+    - Used for fps benchmarking purposes (should not be used otherwise)
+    - Only cuda operations are asynchronous, so does nothing if no cuda
+    ----------
+    """
+
+    if(USE_CUDA and (TORCH_CUDA_DEVICE is not None)):
+        torch.cuda.synchronize()
+
 
 # gpu_device_name
 def gpu_device_name():

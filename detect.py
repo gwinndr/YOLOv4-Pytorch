@@ -1,4 +1,5 @@
 import torch
+import time
 
 from utilities.constants import *
 
@@ -6,11 +7,10 @@ from utilities.arguments import parse_detect_args
 from utilities.configs import parse_config, parse_names
 from utilities.weights import load_weights
 
-
 from utilities.devices import gpu_device_name, get_device, use_cuda
 from utilities.file_reading import load_image, load_frame
 
-from utilities.inferencing import inference_on_single_image, inference_on_video
+from utilities.inferencing import inference_on_single_image, inference_video_to_video
 from utilities.image_processing import write_dets_to_image
 
 # main
@@ -25,6 +25,18 @@ def main():
 
     args = parse_detect_args()
 
+    # Benchmarking information
+    if(not args.benchmark):
+        benchmark = NO_BENCHMARK
+    elif(not args.video):
+        print("Warning: Benchmarking is only available with a video input")
+        benchmark = NO_BENCHMARK
+    else:
+        benchmark = args.benchmark_method
+        if((benchmark < MODEL_ONLY) or (benchmark > MODEL_WITH_IO)):
+            print("Unrecognized -benchmark_method. Please use 1 (MODEL_ONLY), 2 (MODEL_WITH_PP), or 3 (MODEL_WITH_IO)")
+            return
+
     with torch.no_grad():
         if(args.force_cpu):
             print("----- WARNING: Model is using the CPU (--force_cpu), expect model to run slower! -----")
@@ -37,6 +49,9 @@ def main():
 
         model = model.to(get_device())
         model.eval()
+
+        # TODO
+        network_dim = int(model.net_block["width"])
 
         print("Parsing class names...")
         class_names = parse_names(args.class_names)
@@ -54,6 +69,7 @@ def main():
         print("Weights:", args.weights)
         print("Version:", ".".join([str(v) for v in version]))
         print("Images seen:", imgs_seen)
+        print("Network Dim:", network_dim)
         print(SEPARATOR)
         print("")
 
@@ -62,7 +78,6 @@ def main():
             model.print_network()
 
         # TODO
-        network_dim = int(model.net_block["width"])
         letterbox = not args.no_letterbox
 
         ##### IMAGE DETECTION #####
@@ -82,6 +97,16 @@ def main():
 
         ##### VIDEO DETECTION #####
         else:
+            # Warm up the model for more accurate benchmarks
+            if(benchmark != NO_BENCHMARK):
+                print("Warming up model for benchmarks...")
+                for i in range(BENCHMARK_N_WARMUPS):
+                    warmup = torch.rand((IMG_CHANNEL_COUNT, network_dim, network_dim), dtype=TORCH_FLOAT, device=get_device())
+                    model(warmup.unsqueeze(0))
+                print("Done!")
+                print("")
+
+            # Load video capture object
             video_in = cv2.VideoCapture(args.input)
             if(video_in.isOpened()):
                 # Getting input video hyperparameters for the output video
@@ -93,10 +118,19 @@ def main():
 
                 video_out = cv2.VideoWriter(args.output, fourcc, fps, vid_dims, CV2_IS_COLOR)
 
-                inference_on_video(model, video_in, video_out, class_names, network_dim, letterbox, DETECT_VIDEO_FRAME_MOD)
+                fps = inference_video_to_video(model, video_in, video_out, class_names, network_dim, letterbox, benchmark, verbose=True)
+                print("")
+                print("")
 
                 video_in.release()
                 video_out.release()
+
+                if(benchmark == MODEL_ONLY):
+                    print("Model fps: %.2f" % fps)
+                elif(benchmark == MODEL_WITH_PP):
+                    print("Model fps with pre/post-processing: %.2f" % fps)
+                elif(benchmark == MODEL_WITH_IO):
+                    print("Model fps with file io and pre/post-processing: %.2f" % fps)
 
     return
 

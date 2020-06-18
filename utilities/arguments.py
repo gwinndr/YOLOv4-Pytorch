@@ -17,8 +17,10 @@ def parse_detect_args():
 
     parser.add_argument("-input", type=str, default="./examples/dog.jpg", help="Image file to process (video file if --video)")
     parser.add_argument("-output", type=str, default="./detections.png", help="Output image file (video out if --video)")
-
     parser.add_argument("--video", action="store_true", help="Specifies input and output are video files")
+
+    parser.add_argument("--benchmark", action="store_true", help="Benchmark fps on video. Default metric is the MODEL_ONLY approach (mirrors darknet). See -benchmark_method to switch metrics.")
+    parser.add_argument("-benchmark_method", type=int, default=MODEL_ONLY, help="Sets benchmark method for --benchmark. Put 1 for MODEL_ONLY (default), 2 for MODEL_WITH_PP, and 3 for MODEL_WITH_IO.")
 
     parser.add_argument("-cfg", type=str, default="./configs/yolov4.cfg", help="Yolo configuration file")
     parser.add_argument("-weights", type=str, default="./weights/yolov4.weights", help="Yolo weights file")
