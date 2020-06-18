@@ -19,6 +19,7 @@ class ShortcutLayer(nn.Module):
 
         self.has_learnable_params = False
         self.requires_layer_outputs = True
+        self.is_output_layer = False
 
         self.from_layer = from_layer
         self.activation = activation
@@ -33,7 +34,7 @@ class ShortcutLayer(nn.Module):
         ----------
         Author: Damon Gwinn (gwinndr)
         ----------
-        - Gets the layer index for shortcutting (residual connection), can be negative
+        - Gets the layer index for shortcutting (residual connection)
         ----------
         """
 
@@ -46,10 +47,11 @@ class ShortcutLayer(nn.Module):
         Author: Damon Gwinn (gwinndr)
         ----------
         - Runs the shortcut (residual connection)
-        - Must give output from the layer specified by from_layer
+        - Takes a list of outputs from all previous layers
         ----------
         """
-        output_from_layer = layer_outputs[0]
+
+        output_from_layer = layer_outputs[self.from_layer]
 
         res = x + output_from_layer
 

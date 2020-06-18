@@ -25,6 +25,7 @@ class YoloLayer(nn.Module):
 
         self.has_learnable_params = False
         self.requires_layer_outputs = False
+        self.is_output_layer = True
 
         self.anchors = anchors
         self.n_classes = n_classes
@@ -41,12 +42,13 @@ class YoloLayer(nn.Module):
         ----------
         Author: Damon Gwinn (gwinndr)
         ----------
-        - YoloLayer, extracts predictions
-
-        - When in detection mode, returns predictions filtered out by specified NMS type
-        - All detections are returned regardless of object score and will need to be thresholded
-        - TX, TY, TW, and TH are already set to the correct bbox dimensions according to the input image
-          size and will require no post-processing.
+        - YoloLayer, return value varies when in train vs eval mode
+        - When in eval mode, extracts predictions from inputs:
+            - Predictions are returned as [batch, n_preds, bbox_attributes]
+            - bbox_attributes tx, ty, tw, and th have values relative to the input image
+                (i.e. tx = 128 means pixel at x=128 on the image given to the model forward method)
+            - Objectness and class scores are sigmoided.
+            - Note: Class scores are not multiplied by objectness
         ----------
         """
 
@@ -78,20 +80,23 @@ class YoloLayer(nn.Module):
         x_offset = x_offset.expand(n_anchors, -1).permute(1,0)
         y_offset = y_offset.expand(n_anchors, -1).permute(1,0)
 
+        # TX, TY, TW, and TH post-processing
         x[..., YOLO_TX:YOLO_TY+1] = \
             torch.sigmoid(x[..., YOLO_TX:YOLO_TY+1]) * self.scale_xy - (self.scale_xy - 1) / 2
         x[..., YOLO_TW:YOLO_TH+1] = \
             torch.exp(x[..., YOLO_TW:YOLO_TH+1]) * anchors
 
+        # Sigmoid objectness and class scores
         x[..., YOLO_OBJ:] = torch.sigmoid(x[..., YOLO_OBJ:])
 
+        # Adding grid offsets to TX and TY
         x[..., YOLO_TX] += x_offset
         x[..., YOLO_TY] += y_offset
 
-        # Converting values from grid-relative to image-relative
+        # Converting values from grid relative to input image relative
         x[..., YOLO_TX:YOLO_TH+1] *= grid_stride
 
-        # Combining the anchor and grid dimensions
+        # Combining the anchor and grid dimensions into one n_predictions dimension
         x = x.view(batch_num, grid_size*n_anchors, attrs_per_anchor)
 
         return x

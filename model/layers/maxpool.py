@@ -20,6 +20,7 @@ class MaxpoolLayer(nn.Module):
 
         self.has_learnable_params = False
         self.requires_layer_outputs = False
+        self.is_output_layer = False
 
         self.size = size
         self.stride = stride

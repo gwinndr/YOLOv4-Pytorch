@@ -19,6 +19,7 @@ class RouteLayer(nn.Module):
 
         self.has_learnable_params = False
         self.requires_layer_outputs = True
+        self.is_output_layer = False
 
         self.layers = layers
 
@@ -28,7 +29,7 @@ class RouteLayer(nn.Module):
         ----------
         Author: Damon Gwinn (gwinndr)
         ----------
-        - Indices of the routed (concatentated depth-wise) layers
+        - Indices of the routed (concatentated channel-wise) layers
         ----------
         """
 
@@ -41,16 +42,20 @@ class RouteLayer(nn.Module):
         Author: Damon Gwinn (gwinndr)
         ----------
         - Runs the route layer
-        - Must give a list of layer outputs specified by layers
-        - For compatibility, takes in an x input, but does not use it
+        - Takes a list of outputs from all previous layers
+        - Takes in an x input, but does not use it (compatibility)
         ----------
         """
 
-        if(len(layer_outputs) <= 0):
-            print("RouteLayer: BUG: Empty list given for layer_outputs")
+        outputs_to_route = []
+        for l in self.layers:
+            outputs_to_route.append(layer_outputs[l])
+
+        if(len(outputs_to_route) <= 0):
+            print("RouteLayer: BUG: No layers to route")
             return None
 
-        return torch.cat(layer_outputs, dim=CHANNEL_DIM)
+        return torch.cat(outputs_to_route, dim=CHANNEL_DIM)
 
     # to_string
     def to_string(self):

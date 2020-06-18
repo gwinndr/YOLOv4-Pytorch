@@ -23,6 +23,7 @@ class ConvolutionalLayer(nn.Module):
 
         self.has_learnable_params = True
         self.requires_layer_outputs = False
+        self.is_output_layer = False
 
         self.size = size
         self.stride = stride
