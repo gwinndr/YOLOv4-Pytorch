@@ -162,4 +162,7 @@ def inference_video_to_video(model, video_in, video_out, class_names, network_di
     if(benchmark != NO_BENCHMARK):
         fps = frame_count / sum_time
 
+    if(verbose):
+        print("")
+
     return fps

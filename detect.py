@@ -120,7 +120,6 @@ def main():
 
                 fps = inference_video_to_video(model, video_in, video_out, class_names, network_dim, letterbox, benchmark, verbose=True)
                 print("")
-                print("")
 
                 video_in.release()
                 video_out.release()
