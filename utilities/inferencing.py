@@ -59,7 +59,7 @@ def inference_on_images(model, images, network_dim, obj_thresh, letterbox, bench
     predictions = model(x)
 
     # Postprocessing
-    detections = extract_detections(predictions, model.get_yolo_layers(),obj_thresh)
+    detections = extract_detections(predictions, model.get_yolo_layers(), obj_thresh)
 
     for i in range(n_images):
         img_h = images[i].shape[CV2_H_DIM]
@@ -70,7 +70,7 @@ def inference_on_images(model, images, network_dim, obj_thresh, letterbox, bench
     return detections
 
 # inference_video_to_video
-def inference_video_to_video(model, video_in, video_out, class_names, obj_thresh, network_dim, letterbox, benchmark=NO_BENCHMARK, verbose=False):
+def inference_video_to_video(model, video_in, video_out, class_names, network_dim, obj_thresh, letterbox, benchmark=NO_BENCHMARK, verbose=False):
     """
     ----------
     Author: Damon Gwinn (gwinndr)

@@ -64,7 +64,6 @@ def extract_detections_single_image(preds, yolo_layer, obj_thresh):
         # Filter out predictions without a class prob > thresh
         class_mask = class_probs > obj_thresh
         class_mask = torch.sum(class_mask, dim=1).bool()
-        print(class_mask)
         valid_preds = preds_thresh[class_mask]
         n_dets = len(valid_preds)
 
