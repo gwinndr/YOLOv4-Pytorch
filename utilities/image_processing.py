@@ -111,6 +111,8 @@ def write_dets_to_image(detections, image, class_names, verbose_output=False):
     classes = detections[..., DETECTION_CLASS_IDX].cpu().type(torch.int32).numpy()
     class_confs = detections[..., DETECTION_CLASS_PROB].cpu().numpy()
 
+    n_colors = len(BBOX_COLORS)
+
     for i in range(len(detections)):
         x1 = int(round(bboxes[i, BBOX_X1]))
         y1 = int(round(bboxes[i, BBOX_Y1]))
@@ -141,7 +143,7 @@ def write_dets_to_image(detections, image, class_names, verbose_output=False):
 
         # Drawing the full bounding box
         # color = random.choice(BBOX_COLORS)
-        color = BBOX_COLORS[i]
+        color = BBOX_COLORS[i % n_colors]
         cv2.rectangle(image, p1, p2, color, BBOX_RECT_THICKNESS)
 
         # Getting the label text size

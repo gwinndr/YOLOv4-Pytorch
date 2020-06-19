@@ -37,6 +37,7 @@ def main():
             print("Unrecognized -benchmark_method. Please use 1 (MODEL_ONLY), 2 (MODEL_WITH_PP), or 3 (MODEL_WITH_IO)")
             return
 
+    # no_grad disables autograd so our model runs faster
     with torch.no_grad():
         if(args.force_cpu):
             print("----- WARNING: Model is using the CPU (--force_cpu), expect model to run slower! -----")
@@ -77,7 +78,7 @@ def main():
         if(args.print_network):
             model.print_network()
 
-        # TODO
+        obj_thresh = args.obj_thresh
         letterbox = not args.no_letterbox
 
         ##### IMAGE DETECTION #####
@@ -86,7 +87,7 @@ def main():
             if(image is None):
                 return
 
-            detections = inference_on_single_image(model, image, network_dim, letterbox)
+            detections = inference_on_single_image(model, image, network_dim, obj_thresh, letterbox)
             output_image = write_dets_to_image(detections, image, class_names, verbose_output=True)
 
             cv2.imwrite(args.output, output_image)
@@ -118,7 +119,7 @@ def main():
 
                 video_out = cv2.VideoWriter(args.output, fourcc, fps, vid_dims, CV2_IS_COLOR)
 
-                fps = inference_video_to_video(model, video_in, video_out, class_names, network_dim, letterbox, benchmark, verbose=True)
+                fps = inference_video_to_video(model, video_in, video_out, class_names, network_dim, obj_thresh, letterbox, benchmark, verbose=True)
                 print("")
 
                 video_in.release()

@@ -72,9 +72,6 @@ YOLO_NMS_KIND = GREEDY_NMS
 YOLO_BETA_NMS = 0.6
 YOLO_MAX_DELTA = 5
 
-# Object threshold default
-YOLO_OBJ_THRESH = 0.25
-
 # BBOX attributes
 YOLO_TX = 0
 YOLO_TY = 1

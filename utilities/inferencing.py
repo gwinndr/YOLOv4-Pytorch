@@ -7,7 +7,7 @@ from utilities.image_processing import preprocess_image_eval, map_dets_to_origin
 from utilities.extract_detections import extract_detections
 
 # inference_on_single_image
-def inference_on_single_image(model, image, network_dim, letterbox):
+def inference_on_single_image(model, image, network_dim, obj_thresh, letterbox):
     """
     ----------
     Author: Damon Gwinn (gwinndr)
@@ -29,14 +29,14 @@ def inference_on_single_image(model, image, network_dim, letterbox):
     predictions = model(x)
 
     # Postprocessing
-    detections = extract_detections(predictions, model.get_yolo_layers())
+    detections = extract_detections(predictions, model.get_yolo_layers(), obj_thresh)
     detections = map_dets_to_original_image(detections[0], img_h, img_w, network_dim, letterbox)
 
     # Note, not in list format (since it's only one image)
     return detections
 
 # inference_on_images
-def inference_on_images(model, images, network_dim, letterbox, benchmark_model=False):
+def inference_on_images(model, images, network_dim, obj_thresh, letterbox, benchmark_model=False):
     """
     ----------
     Author: Damon Gwinn (gwinndr)
@@ -59,7 +59,7 @@ def inference_on_images(model, images, network_dim, letterbox, benchmark_model=F
     predictions = model(x)
 
     # Postprocessing
-    detections = extract_detections(predictions, model.get_yolo_layers())
+    detections = extract_detections(predictions, model.get_yolo_layers(),obj_thresh)
 
     for i in range(n_images):
         img_h = images[i].shape[CV2_H_DIM]
@@ -70,7 +70,7 @@ def inference_on_images(model, images, network_dim, letterbox, benchmark_model=F
     return detections
 
 # inference_video_to_video
-def inference_video_to_video(model, video_in, video_out, class_names, network_dim, letterbox, benchmark=NO_BENCHMARK, verbose=False):
+def inference_video_to_video(model, video_in, video_out, class_names, obj_thresh, network_dim, letterbox, benchmark=NO_BENCHMARK, verbose=False):
     """
     ----------
     Author: Damon Gwinn (gwinndr)
@@ -128,7 +128,7 @@ def inference_video_to_video(model, video_in, video_out, class_names, network_di
             # Postprocessing
             frame_h = frame.shape[CV2_H_DIM]
             frame_w = frame.shape[CV2_W_DIM]
-            detections = extract_detections(predictions, model.get_yolo_layers())
+            detections = extract_detections(predictions, model.get_yolo_layers(), obj_thresh)
             detections = map_dets_to_original_image(detections[0], frame_h, frame_w, network_dim, letterbox)
             output_frame = write_dets_to_image(detections, frame, class_names, verbose_output=False)
 

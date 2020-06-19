@@ -4,7 +4,7 @@ from .constants import *
 from .nms import run_nms_inplace
 
 # extract_detections
-def extract_detections(all_preds, yolo_layers, obj_thresh=YOLO_OBJ_THRESH):
+def extract_detections(all_preds, yolo_layers, obj_thresh):
     """
     ----------
     Author: Damon Gwinn (gwinndr)
@@ -25,14 +25,14 @@ def extract_detections(all_preds, yolo_layers, obj_thresh=YOLO_OBJ_THRESH):
 
     # Getting detections on a batch by batch basis
     for b, batch_preds in enumerate(all_preds):
-        batch_detections = extract_detections_single_image(batch_preds, yolo_layer, obj_thresh=obj_thresh)
+        batch_detections = extract_detections_single_image(batch_preds, yolo_layer, obj_thresh)
         all_detections.append(batch_detections)
 
     # print(all_detections)
     return all_detections
 
 # extract_detections_single_image
-def extract_detections_single_image(preds, yolo_layer, obj_thresh=YOLO_OBJ_THRESH):
+def extract_detections_single_image(preds, yolo_layer, obj_thresh):
     """
     ----------
     Author: Damon Gwinn (gwinndr)
@@ -62,8 +62,9 @@ def extract_detections_single_image(preds, yolo_layer, obj_thresh=YOLO_OBJ_THRES
         # class_probs = preds_thresh[..., YOLO_CLASS_START:]
 
         # Filter out predictions without a class prob > thresh
-        class_mask = class_probs > YOLO_OBJ_THRESH
+        class_mask = class_probs > obj_thresh
         class_mask = torch.sum(class_mask, dim=1).bool()
+        print(class_mask)
         valid_preds = preds_thresh[class_mask]
         n_dets = len(valid_preds)
 
