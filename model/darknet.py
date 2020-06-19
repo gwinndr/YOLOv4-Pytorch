@@ -1,12 +1,10 @@
 import torch
 import torch.nn as nn
-import copy
 import sys
 
 from utilities.constants import *
 
 from .layers.yolo import YoloLayer
-from .layers.convolutional import ConvolutionalLayer
 
 # Darknet
 class Darknet(nn.Module):
@@ -46,7 +44,6 @@ class Darknet(nn.Module):
         input_dim = x.shape[X_DIM]
 
         for i, module in enumerate(self.layer_modules):
-            # Running the model layer
             if(module.is_output_layer):
                 predictions.append(module(x, input_dim))
 
