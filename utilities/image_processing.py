@@ -149,19 +149,30 @@ def write_dets_to_image(detections, image, class_names, verbose_output=False):
         # Getting the label text size
         t_dims = cv2.getTextSize(label, BBOX_FONT, BBOX_FONT_SCALE, BBOX_FONT_THICKNESS)[0]
 
-        # Drawing a label rectangle above the bbox to make the text pop out better
+        # Drawing a label rectangle above the bbox at the top left to make the text pop out better
         label_rect_x1 = x1
         label_rect_y1 = y1 - t_dims[CV2_TEXT_SIZE_H] - (BBOX_TEXT_TOP_PAD + BBOX_TEXT_BOT_PAD)
         label_rect_x2 = x1 + t_dims[CV2_TEXT_SIZE_W] + (BBOX_TEXT_LEFT_PAD + BBOX_TEXT_RIGHT_PAD)
         label_rect_y2 = y1
 
+        # Label to go into the rectangle
+        label_x = x1 + BBOX_TEXT_LEFT_PAD
+        label_y = y1 - BBOX_TEXT_BOT_PAD
+
+        # Will put the label below the bbox at the top left if it clips outside the image
+        if(label_rect_y1 < 0):
+            move_y = (y1 - label_rect_y1)
+
+            label_rect_y1 += move_y
+            label_rect_y2 += move_y
+            label_y += move_y
+
         label_rect_p1 = (label_rect_x1, label_rect_y1)
         label_rect_p2 = (label_rect_x2, label_rect_y2)
+        label_text_p = (label_x, label_y)
 
+        # Drawing the label rectangle with the text inside
         cv2.rectangle(image, label_rect_p1, label_rect_p2, color, CV2_RECT_FILL)
-
-        # Placing the label text within the label rectangle
-        label_text_p = (x1 + BBOX_TEXT_LEFT_PAD, y1 - BBOX_TEXT_BOT_PAD)
         cv2.putText(image, label, label_text_p, BBOX_FONT, BBOX_FONT_SCALE, COLOR_BLACK, BBOX_FONT_THICKNESS);
 
     return image
