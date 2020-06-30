@@ -41,7 +41,7 @@ class Darknet(nn.Module):
         """
         predictions = []
         saved_outputs = []
-        input_dim = x.shape[X_DIM]
+        input_dim = x.shape[INPUT_H_DIM]
 
         for i, module in enumerate(self.layer_modules):
             if(module.is_output_layer):

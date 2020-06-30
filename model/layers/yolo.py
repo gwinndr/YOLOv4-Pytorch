@@ -52,10 +52,10 @@ class YoloLayer(nn.Module):
         ----------
         """
 
-        grid_dim = x.shape[X_DIM]
+        grid_dim = x.shape[INPUT_H_DIM]
         grid_stride = input_dim // grid_dim
 
-        batch_num = x.shape[BATCH_DIM]
+        batch_num = x.shape[INPUT_BATCH_DIM]
         attrs_per_anchor = self.n_classes + YOLO_N_BBOX_ATTRS
         n_anchors = len(self.anchors)
         grid_size = grid_dim * grid_dim

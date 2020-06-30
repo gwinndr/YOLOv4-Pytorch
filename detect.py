@@ -8,10 +8,10 @@ from utilities.configs import parse_config, parse_names
 from utilities.weights import load_weights
 
 from utilities.devices import gpu_device_name, get_device, use_cuda
-from utilities.file_reading import load_image, load_frame
+from utilities.file_io import load_image, load_frame
 
-from utilities.inferencing import inference_on_single_image, inference_video_to_video
-from utilities.image_processing import write_dets_to_image
+from utilities.inferencing import inference_on_image, inference_video_to_video
+from utilities.images import draw_detections
 
 # main
 def main():
@@ -87,8 +87,8 @@ def main():
             if(image is None):
                 return
 
-            detections = inference_on_single_image(model, image, network_dim, obj_thresh, letterbox)
-            output_image = write_dets_to_image(detections, image, class_names, verbose_output=True)
+            detections = inference_on_image(model, image, network_dim, obj_thresh, letterbox)
+            output_image = draw_detections(detections, image, class_names, verbose_output=True)
 
             cv2.imwrite(args.output, output_image)
 
@@ -102,7 +102,7 @@ def main():
             if(benchmark != NO_BENCHMARK):
                 print("Warming up model for benchmarks...")
                 for i in range(BENCHMARK_N_WARMUPS):
-                    warmup = torch.rand((IMG_CHANNEL_COUNT, network_dim, network_dim), dtype=TORCH_FLOAT, device=get_device())
+                    warmup = torch.rand((IMG_CHANNEL_COUNT, network_dim, network_dim), dtype=torch.float32, device=get_device())
                     model(warmup.unsqueeze(0))
                 print("Done!")
                 print("")
@@ -117,7 +117,7 @@ def main():
                 fourcc = int(video_in.get(cv2.CAP_PROP_FOURCC))
                 fps = int(video_in.get(cv2.CAP_PROP_FPS))
 
-                video_out = cv2.VideoWriter(args.output, fourcc, fps, vid_dims, CV2_IS_COLOR)
+                video_out = cv2.VideoWriter(args.output, fourcc, fps, vid_dims, isColor=True)
 
                 fps = inference_video_to_video(model, video_in, video_out, class_names, network_dim, obj_thresh, letterbox, benchmark, verbose=True)
                 print("")

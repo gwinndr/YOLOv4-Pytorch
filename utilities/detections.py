@@ -2,6 +2,7 @@ import torch
 
 from .constants import *
 from .nms import run_nms_inplace
+from .images import get_letterbox_image_embedding
 
 # extract_detections
 def extract_detections(all_preds, yolo_layers, obj_thresh):
@@ -30,6 +31,59 @@ def extract_detections(all_preds, yolo_layers, obj_thresh):
 
     # print(all_detections)
     return all_detections
+
+# correct_detections
+def correct_detections(detections, img_h, img_w, input_dim=INPUT_DIM_DEFAULT, letterboxed=LETTERBOX_DEFAULT):
+    """
+    ----------
+    Author: Damon Gwinn (gwinndr)
+    ----------
+    - Maps detections from the preprocessed input tensor back to the original image
+    ----------
+    """
+
+    # Getting letterbox information for embedded image
+    if(letterboxed):
+        embed_h, embed_w, start_y, start_x = get_letterbox_image_embedding(img_h, img_w, input_dim)
+
+    # Setting information such that there is no letterbox (tensor contains the full image)
+    else:
+        embed_h = input_dim
+        embed_w = input_dim
+        start_y = 0
+        start_x = 0
+
+    dets_x1 = detections[..., DETECTION_X1]
+    dets_y1 = detections[..., DETECTION_Y1]
+    dets_x2 = detections[..., DETECTION_X2]
+    dets_y2 = detections[..., DETECTION_Y2]
+
+    # Move embedded image back to top left
+    dets_x1 -= start_x
+    dets_y1 -= start_y
+    dets_x2 -= start_x
+    dets_y2 -= start_y
+
+    # Normalize by the image within the letterbox
+    dets_x1 /= embed_w
+    dets_y1 /= embed_h
+    dets_x2 /= embed_w
+    dets_y2 /= embed_h
+
+    # Map back to original image
+    dets_x1 *= img_w
+    dets_y1 *= img_h
+    dets_x2 *= img_w
+    dets_y2 *= img_h
+
+    # Clamping dims to lie within the image
+    if(CLAMP_DETECTIONS):
+        torch.clamp(dets_x1, min=0, max=img_w, out=dets_x1)
+        torch.clamp(dets_y1, min=0, max=img_h, out=dets_y1)
+        torch.clamp(dets_x2, min=0, max=img_w, out=dets_x2)
+        torch.clamp(dets_y2, min=0, max=img_h, out=dets_y2)
+
+    return detections
 
 # extract_detections_single_image
 def extract_detections_single_image(preds, yolo_layer, obj_thresh):

@@ -16,15 +16,18 @@ OBJ_THRESH_DEFAULT = 0.25
 LETTERBOX_DEFAULT = True
 INPUT_DIM_DEFAULT = 608
 
+# Forces resulting detections to always lie within the original image bounds
+CLAMP_DETECTIONS = False
+
+# Number of times to run the model on a random image as a warmup when benchmarking
+BENCHMARK_N_WARMUPS = 25
+
+##### BENCHMARKING #####
 # Benchmarking (MODEL_ONLY is equivalent to official darknet benchmark fps)
 NO_BENCHMARK = 0 # No benchmarking
 MODEL_ONLY = 1 # Fps running the model only (recommended)
 MODEL_WITH_PP = 2 # Fps running pre/post-processing + MODEL_ONLY
 MODEL_WITH_IO = 3 # Fps running file io + MODEL_WITH_PP
-
-# Number of times to run the model on a random image as a warmup
-BENCHMARK_N_WARMUPS = 25
-
 
 ##### BBOX DRAWING #####
 BBOX_INCLUDE_CLASS_CONF = True
@@ -44,6 +47,14 @@ BBOX_TEXT_BOT_PAD = 6
 
 CV2_TEXT_SIZE_W = 0
 CV2_TEXT_SIZE_H = 1
+
+##### COCO EVAL #####
+COCO_ANN_TYPE_SEGM = "segm"
+COCO_ANN_TYPE_BBOX = "bbox"
+COCO_ANN_TYPE_KEYP = "keypoints"
+
+# Index with yolo's 80 class id to get the corresponding coco 91 class id
+COCO_80_TO_91 = ( 1,2,3,4,5,6,7,8,9,10,11,13,14,15,16,17,18,19,20,21,22,23,24,25,27,28,31,32,33,34,35,36,37,38,39,40,41,42,43,44,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,67,70,72,73,74,75,76,77,78,79,80,81,82,84,85,86,87,88,89,90 )
 
 ##### SUPPORTED NMS TYPES #####
 GREEDY_NMS = "greedynms"
@@ -72,7 +83,7 @@ YOLO_NMS_KIND = GREEDY_NMS
 YOLO_BETA_NMS = 0.6
 YOLO_MAX_DELTA = 5
 
-# BBOX attributes
+# YOLO BBOX-specific attributes
 YOLO_TX = 0
 YOLO_TY = 1
 YOLO_TW = 2
@@ -95,8 +106,7 @@ DETECTION_Y2 = 3
 DETECTION_CLASS_IDX = 4
 DETECTION_CLASS_PROB = 5
 
-DETECTION_N_ELEMS = 6
-
+DETECTION_N_ELEMS = 6 # The number of attributes for each yolo detection
 
 # Other
 YOLO_N_BBOX_ATTRS = 5 # x,y,w,h,obj
@@ -110,25 +120,17 @@ LETTERBOX_COLOR = 0.5
 ##### MISC #####
 SEPARATOR = "========================="
 
-# May experiment with precision stuff in future
-TORCH_FLOAT = torch.float32
 IMG_CHANNEL_COUNT = 3
 
-CV2_IS_COLOR = True
-
-BATCH_DIM = 0
-CHANNEL_DIM = 1
-X_DIM = 2
-Y_DIM = 3
+INPUT_BATCH_DIM = 0
+INPUT_CHANNEL_DIM = 1
+INPUT_H_DIM = 2
+INPUT_W_DIM = 3
 
 CV2_H_DIM = 0
 CV2_W_DIM = 1
 CV2_C_DIM = 2
 CV2_N_DIMS = 3
-
-INPUT_C_DIM = 0
-INPUT_H_DIM = 1
-INPUT_W_DIM = 2
 
 BBOX_X1 = 0
 BBOX_Y1 = 1
@@ -136,5 +138,5 @@ BBOX_X2 = 2
 BBOX_Y2 = 3
 BBOX_N_ELEMS = 4
 
-# For printing on the same line using print
+# For printing on the same line
 CARRIAGE_RETURN = "\r"

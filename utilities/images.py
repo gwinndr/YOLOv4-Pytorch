@@ -3,10 +3,10 @@ import cv2
 import numpy as np
 
 from utilities.constants import *
-from utilities.devices import get_device
+from utilities.devices import get_device, cpu_device
 
 # preprocess_image_eval
-def preprocess_image_eval(image, target_dim=INPUT_DIM_DEFAULT, letterbox=LETTERBOX_DEFAULT):
+def preprocess_image_eval(image, target_dim=INPUT_DIM_DEFAULT, letterbox=LETTERBOX_DEFAULT, force_cpu=False):
     """
     ----------
     Author: Damon Gwinn (gwinndr)
@@ -14,11 +14,18 @@ def preprocess_image_eval(image, target_dim=INPUT_DIM_DEFAULT, letterbox=LETTERB
     - Converts a cv2 image into Darknet eval input format with dimensions target_dim x target_dim
     - Output will convert cv2 channels from BGR to RGB
     - Letterboxing recommended for best results
+    - force_cpu will force the return type to be on the cpu, otherwise uses the default device
+        - DataLoader with num_workers > 1 needs the output to be on the cpu
     ----------
     """
 
+    if(force_cpu):
+        output_device = cpu_device()
+    else:
+        output_device = get_device()
+
     # Creating blank input which we fill in
-    input_tensor = torch.full((target_dim, target_dim, IMG_CHANNEL_COUNT), LETTERBOX_COLOR, dtype=TORCH_FLOAT, device=get_device())
+    input_tensor = torch.full((target_dim, target_dim, IMG_CHANNEL_COUNT), LETTERBOX_COLOR, dtype=torch.float32, device=output_device)
 
     # Getting letterbox embedding information
     if(letterbox):
@@ -44,7 +51,7 @@ def preprocess_image_eval(image, target_dim=INPUT_DIM_DEFAULT, letterbox=LETTERB
     new_img = cv2.cvtColor(new_img, cv2.COLOR_BGR2RGB)
 
     # Normalizing the image values and converting to torch tensor
-    new_img = torch.tensor(new_img, dtype=TORCH_FLOAT, device=get_device()) / 255.0
+    new_img = torch.tensor(new_img, dtype=torch.float32, device=output_device) / 255.0
 
     # Embedding the normalized resized image into the input tensor (Set equal if not letterboxing)
     input_tensor[start_y:end_y, start_x:end_x, :] = new_img
@@ -52,49 +59,8 @@ def preprocess_image_eval(image, target_dim=INPUT_DIM_DEFAULT, letterbox=LETTERB
 
     return input_tensor
 
-# map_detections_to_original_image
-def map_dets_to_original_image(detections, img_h, img_w, input_dim=INPUT_DIM_DEFAULT, letterboxed=LETTERBOX_DEFAULT):
-    """
-    ----------
-    Author: Damon Gwinn (gwinndr)
-    ----------
-    - Maps detections from the preprocessed input image back to the original image
-    ----------
-    """
-
-    # Getting letterbox information for embedded image
-    if(letterboxed):
-        embed_h, embed_w, start_y, start_x = get_letterbox_image_embedding(img_h, img_w, input_dim)
-
-    # Setting information such that there is no letterbox (tensor contains the full image)
-    else:
-        embed_h = input_dim
-        embed_w = input_dim
-        start_y = 0
-        start_x = 0
-
-    # Move embedded image back to top left
-    detections[..., DETECTION_X1] -= start_x
-    detections[..., DETECTION_Y1] -= start_y
-    detections[..., DETECTION_X2] -= start_x
-    detections[..., DETECTION_Y2] -= start_y
-
-    # Normalize by the image within the letterbox
-    detections[..., DETECTION_X1] /= embed_w
-    detections[..., DETECTION_Y1] /= embed_h
-    detections[..., DETECTION_X2] /= embed_w
-    detections[..., DETECTION_Y2] /= embed_h
-
-    # Map back to original image
-    detections[..., DETECTION_X1] *= img_w
-    detections[..., DETECTION_Y1] *= img_h
-    detections[..., DETECTION_X2] *= img_w
-    detections[..., DETECTION_Y2] *= img_h
-
-    return detections
-
-# write_dets_to_image
-def write_dets_to_image(detections, image, class_names, verbose_output=False):
+# draw_detections
+def draw_detections(detections, image, class_names, verbose_output=False):
     """
     ----------
     Author: Damon Gwinn (gwinndr)
@@ -107,9 +73,15 @@ def write_dets_to_image(detections, image, class_names, verbose_output=False):
 
     image = image.copy()
 
-    bboxes = detections[..., DETECTION_X1:DETECTION_Y2+1].cpu().numpy()
-    classes = detections[..., DETECTION_CLASS_IDX].cpu().type(torch.int32).numpy()
-    class_confs = detections[..., DETECTION_CLASS_PROB].cpu().numpy()
+    bboxes = detections[..., DETECTION_X1:DETECTION_Y2+1]
+    classes = detections[..., DETECTION_CLASS_IDX]
+    class_confs = detections[..., DETECTION_CLASS_PROB]
+
+    # Sort by confidence (better bbox color stability on videos)
+    _, indices = torch.sort(class_confs, dim=0, descending=True)
+    bboxes = bboxes[indices].cpu().numpy()
+    classes = classes[indices].cpu().type(torch.int32).numpy()
+    class_confs = class_confs[indices].cpu().numpy()
 
     n_colors = len(BBOX_COLORS)
 
@@ -244,6 +216,6 @@ def image_to_tensor(image):
     norm_image = image.astype(np.float32) / 255.0
 
     # then convert to tensor
-    tensor = torch.tensor(norm_image, device=get_device(), dtype=TORCH_FLOAT)
+    tensor = torch.tensor(norm_image, device=get_device(), dtype=torch.float32)
     tensor = tensor.permute(CV2_C_DIM, CV2_H_DIM, CV2_W_DIM).contiguous()
     return tensor

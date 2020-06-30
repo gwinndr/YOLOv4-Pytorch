@@ -3,19 +3,40 @@ import time
 from utilities.constants import *
 
 from utilities.devices import get_device, synchronize_device
-from utilities.image_processing import preprocess_image_eval, map_dets_to_original_image, write_dets_to_image
-from utilities.extract_detections import extract_detections
+from utilities.images import preprocess_image_eval, draw_detections
+from utilities.detections import extract_detections, correct_detections
 
-# inference_on_single_image
-def inference_on_single_image(model, image, network_dim, obj_thresh, letterbox):
+# inference
+def inference(model, input_tensor, obj_thresh):
     """
     ----------
     Author: Damon Gwinn (gwinndr)
     ----------
-    - Runs inference detection given a yolo model
-    - Assumes image is a cv2 image with 3 color channels
-    - Returns detections for this image (does not return a list like in inference_on_images)
-    - verbose_output prints the detections to console
+    - Runs yolo model and extracts detections
+    - Input should be a tensor of the form: (BATCH, N_CHANNEL, H_DIM, W_DIM)
+    - Returned detections are relative to the input tensor (see correct_detections in utilities.detections)
+    ----------
+    """
+
+    model = model.eval()
+    with torch.no_grad():
+        # Running the model
+        predictions = model(input_tensor)
+
+        # Postprocessing
+        detections = extract_detections(predictions, model.get_yolo_layers(), obj_thresh)
+
+    return detections
+
+# inference_on_image
+def inference_on_image(model, image, network_dim, obj_thresh, letterbox):
+    """
+    ----------
+    Author: Damon Gwinn (gwinndr)
+    ----------
+    - Similar to inference except takes in an image as input (simpler to use)
+    - Performs all needed pre and post processing
+    - Returned detections are relative to the input image
     ----------
     """
 
@@ -23,49 +44,12 @@ def inference_on_single_image(model, image, network_dim, obj_thresh, letterbox):
     img_w = image.shape[CV2_W_DIM]
 
     # Preprocessing
-    x = preprocess_image_eval(image, network_dim, letterbox).unsqueeze(0)
+    input_tensor = preprocess_image_eval(image, network_dim, letterbox).unsqueeze(0)
 
-    # Running the model
-    predictions = model(x)
-
-    # Postprocessing
-    detections = extract_detections(predictions, model.get_yolo_layers(), obj_thresh)
-    detections = map_dets_to_original_image(detections[0], img_h, img_w, network_dim, letterbox)
-
-    # Note, not in list format (since it's only one image)
-    return detections
-
-# inference_on_images
-def inference_on_images(model, images, network_dim, obj_thresh, letterbox, benchmark_model=False):
-    """
-    ----------
-    Author: Damon Gwinn (gwinndr)
-    ----------
-    - Runs inference detection given a yolo model
-    - Assumes images is a list of cv2 images with 3 color channels
-    - Returns detections for each image as a list
-    - verbose_output prints the detections to console
-    ----------
-    """
-
-    n_images = len(images)
-
-    # Preprocessing
-    x = torch.zeros((n_images, IMG_CHANNEL_COUNT, network_dim, network_dim), dtype=TORCH_FLOAT, device=get_device())
-    for i, image in enumerate(images):
-        x[i] = preprocess_image_eval(image, network_dim, letterbox)
-
-    # Running the model
-    predictions = model(x)
+    detections = inference(model, input_tensor, obj_thresh)
 
     # Postprocessing
-    detections = extract_detections(predictions, model.get_yolo_layers(), obj_thresh)
-
-    for i in range(n_images):
-        img_h = images[i].shape[CV2_H_DIM]
-        img_w = images[i].shape[CV2_W_DIM]
-
-        detections[i] = map_dets_to_original_image(detections[i], img_h, img_w, network_dim, letterbox)
+    detections = correct_detections(detections[0], img_h, img_w, network_dim, letterbox)
 
     return detections
 
@@ -129,8 +113,8 @@ def inference_video_to_video(model, video_in, video_out, class_names, network_di
             frame_h = frame.shape[CV2_H_DIM]
             frame_w = frame.shape[CV2_W_DIM]
             detections = extract_detections(predictions, model.get_yolo_layers(), obj_thresh)
-            detections = map_dets_to_original_image(detections[0], frame_h, frame_w, network_dim, letterbox)
-            output_frame = write_dets_to_image(detections, frame, class_names, verbose_output=False)
+            detections = correct_detections(detections[0], frame_h, frame_w, network_dim, letterbox)
+            output_frame = draw_detections(detections, frame, class_names, verbose_output=False)
 
             # end MODEL_WITH_PP
             if(benchmark == MODEL_WITH_PP):

@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from utilities.constants import CHANNEL_DIM
+from utilities.constants import INPUT_CHANNEL_DIM
 
 # RouteLayer
 class RouteLayer(nn.Module):
@@ -55,7 +55,7 @@ class RouteLayer(nn.Module):
             print("RouteLayer: BUG: No layers to route")
             return None
 
-        return torch.cat(outputs_to_route, dim=CHANNEL_DIM)
+        return torch.cat(outputs_to_route, dim=INPUT_CHANNEL_DIM)
 
     # to_string
     def to_string(self):
