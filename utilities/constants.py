@@ -16,9 +16,6 @@ OBJ_THRESH_DEFAULT = 0.25
 LETTERBOX_DEFAULT = True
 INPUT_DIM_DEFAULT = 608
 
-# Forces resulting detections to always lie within the original image bounds
-CLAMP_DETECTIONS = False
-
 # Number of times to run the model on a random image as a warmup when benchmarking
 BENCHMARK_N_WARMUPS = 25
 

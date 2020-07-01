@@ -23,7 +23,7 @@ def inference(model, input_tensor, obj_thresh):
         # Running the model
         predictions = model(input_tensor)
 
-        # Postprocessing
+        # Extracting detections from predictions
         detections = extract_detections(predictions, model.get_yolo_layers(), obj_thresh)
 
     return detections
@@ -44,12 +44,13 @@ def inference_on_image(model, image, network_dim, obj_thresh, letterbox):
     img_w = image.shape[CV2_W_DIM]
 
     # Preprocessing
-    input_tensor = preprocess_image_eval(image, network_dim, letterbox).unsqueeze(0)
+    input_tensor, img_info = preprocess_image_eval(image, network_dim, letterbox)
+    input_tensor = input_tensor.unsqueeze(0) # batch dim
 
     detections = inference(model, input_tensor, obj_thresh)
 
     # Postprocessing
-    detections = correct_detections(detections[0], img_h, img_w, network_dim, letterbox)
+    detections = correct_detections(detections[0], img_info)
 
     return detections
 
@@ -94,7 +95,8 @@ def inference_video_to_video(model, video_in, video_out, class_names, network_di
                 start_time = time.time()
 
             # Preprocessing
-            x = preprocess_image_eval(frame, network_dim, letterbox).unsqueeze(0)
+            x, img_info = preprocess_image_eval(frame, network_dim, letterbox)
+            x = x.unsqueeze(0) # batch dim
 
             # start MODEL_ONLY
             if(benchmark == MODEL_ONLY):
@@ -110,10 +112,8 @@ def inference_video_to_video(model, video_in, video_out, class_names, network_di
                 sum_time += time.time() - start_time
 
             # Postprocessing
-            frame_h = frame.shape[CV2_H_DIM]
-            frame_w = frame.shape[CV2_W_DIM]
             detections = extract_detections(predictions, model.get_yolo_layers(), obj_thresh)
-            detections = correct_detections(detections[0], frame_h, frame_w, network_dim, letterbox)
+            detections = correct_detections(detections[0], img_info)
             output_frame = draw_detections(detections, frame, class_names, verbose_output=False)
 
             # end MODEL_WITH_PP

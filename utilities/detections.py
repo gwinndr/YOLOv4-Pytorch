@@ -33,25 +33,16 @@ def extract_detections(all_preds, yolo_layers, obj_thresh):
     return all_detections
 
 # correct_detections
-def correct_detections(detections, img_h, img_w, input_dim=INPUT_DIM_DEFAULT, letterboxed=LETTERBOX_DEFAULT):
+def correct_detections(detections, image_info, clamp_detections=False):
     """
     ----------
     Author: Damon Gwinn (gwinndr)
     ----------
     - Maps detections from the preprocessed input tensor back to the original image
+    - If input not letterboxed, image_info start dims should be 0 and embed dims equal to network input dims
+    - clamp_detections forces bboxes to lie within the image bounds
     ----------
     """
-
-    # Getting letterbox information for embedded image
-    if(letterboxed):
-        embed_h, embed_w, start_y, start_x = get_letterbox_image_embedding(img_h, img_w, input_dim)
-
-    # Setting information such that there is no letterbox (tensor contains the full image)
-    else:
-        embed_h = input_dim
-        embed_w = input_dim
-        start_y = 0
-        start_x = 0
 
     dets_x1 = detections[..., DETECTION_X1]
     dets_y1 = detections[..., DETECTION_Y1]
@@ -59,25 +50,25 @@ def correct_detections(detections, img_h, img_w, input_dim=INPUT_DIM_DEFAULT, le
     dets_y2 = detections[..., DETECTION_Y2]
 
     # Move embedded image back to top left
-    dets_x1 -= start_x
-    dets_y1 -= start_y
-    dets_x2 -= start_x
-    dets_y2 -= start_y
+    dets_x1 -= image_info.w_offset
+    dets_y1 -= image_info.h_offset
+    dets_x2 -= image_info.w_offset
+    dets_y2 -= image_info.h_offset
 
     # Normalize by the image within the letterbox
-    dets_x1 /= embed_w
-    dets_y1 /= embed_h
-    dets_x2 /= embed_w
-    dets_y2 /= embed_h
+    dets_x1 /= image_info.embed_w
+    dets_y1 /= image_info.embed_h
+    dets_x2 /= image_info.embed_w
+    dets_y2 /= image_info.embed_h
 
     # Map back to original image
-    dets_x1 *= img_w
-    dets_y1 *= img_h
-    dets_x2 *= img_w
-    dets_y2 *= img_h
+    dets_x1 *= image_info.img_w
+    dets_y1 *= image_info.img_h
+    dets_x2 *= image_info.img_w
+    dets_y2 *= image_info.img_h
 
     # Clamping dims to lie within the image
-    if(CLAMP_DETECTIONS):
+    if(clamp_detections):
         torch.clamp(dets_x1, min=0, max=img_w, out=dets_x1)
         torch.clamp(dets_y1, min=0, max=img_h, out=dets_y1)
         torch.clamp(dets_x2, min=0, max=img_w, out=dets_x2)
@@ -106,7 +97,7 @@ def extract_detections_single_image(preds, yolo_layer, obj_thresh):
     if(len(preds_thresh) > 0):
 
         # Get full class probs by multiplying class score with objectness
-        # We need a "fake" dimension here (unsqueeze) to get pytorch to broadcast properly
+        # We need a num values dimension on the object scores (unsqueeze) to get pytorch to broadcast properly
         preds_obj = preds_thresh[..., YOLO_OBJ].unsqueeze(1)
         class_probs = preds_thresh[..., YOLO_CLASS_START:]
         class_probs *= preds_obj

@@ -2,8 +2,10 @@ import torch
 import cv2
 import numpy as np
 
-from utilities.constants import *
-from utilities.devices import get_device, cpu_device
+from .constants import *
+from .devices import get_device, cpu_device
+
+from .image_info import ImageInfo
 
 # preprocess_image_eval
 def preprocess_image_eval(image, target_dim=INPUT_DIM_DEFAULT, letterbox=LETTERBOX_DEFAULT, force_cpu=False):
@@ -16,8 +18,12 @@ def preprocess_image_eval(image, target_dim=INPUT_DIM_DEFAULT, letterbox=LETTERB
     - Letterboxing recommended for best results
     - force_cpu will force the return type to be on the cpu, otherwise uses the default device
         - DataLoader with num_workers > 1 needs the output to be on the cpu
+    - Returns preprocessed input tensor and image info object for mapping detections back
     ----------
     """
+
+    # Tracking image information to map detections back
+    image_info = ImageInfo(image, target_dim)
 
     if(force_cpu):
         output_device = cpu_device()
@@ -32,6 +38,8 @@ def preprocess_image_eval(image, target_dim=INPUT_DIM_DEFAULT, letterbox=LETTERB
         img_w = image.shape[CV2_W_DIM]
         img_h = image.shape[CV2_H_DIM]
         embed_h, embed_w, start_y, start_x = get_letterbox_image_embedding(img_h, img_w, target_dim)
+
+        image_info.set_letterbox(start_y, start_x, embed_h, embed_w)
 
     # Setting embedding information to include no letterbox space
     else:
@@ -57,7 +65,7 @@ def preprocess_image_eval(image, target_dim=INPUT_DIM_DEFAULT, letterbox=LETTERB
     input_tensor[start_y:end_y, start_x:end_x, :] = new_img
     input_tensor = input_tensor.permute(CV2_C_DIM, CV2_H_DIM, CV2_W_DIM).contiguous()
 
-    return input_tensor
+    return input_tensor, image_info
 
 # draw_detections
 def draw_detections(detections, image, class_names, verbose_output=False):
