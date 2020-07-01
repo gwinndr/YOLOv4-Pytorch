@@ -40,9 +40,6 @@ def inference_on_image(model, image, network_dim, obj_thresh, letterbox):
     ----------
     """
 
-    img_h = image.shape[CV2_H_DIM]
-    img_w = image.shape[CV2_W_DIM]
-
     # Preprocessing
     input_tensor, img_info = preprocess_image_eval(image, network_dim, letterbox)
     input_tensor = input_tensor.unsqueeze(0) # batch dim
