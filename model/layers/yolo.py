@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 
 from utilities.constants import *
-from utilities.devices import get_device
 
 # The big cheese
 # YoloLayer
@@ -52,6 +51,8 @@ class YoloLayer(nn.Module):
         ----------
         """
 
+        device = x.device
+
         grid_dim = x.shape[INPUT_H_DIM]
         grid_stride = input_dim // grid_dim
 
@@ -61,7 +62,7 @@ class YoloLayer(nn.Module):
         grid_size = grid_dim * grid_dim
 
         anchors = [(anc[0] / grid_stride, anc[1] / grid_stride) for anc in self.anchors]
-        anchors = torch.tensor(anchors, device=get_device())
+        anchors = torch.tensor(anchors, device=device)
 
         # Combining grid_dims into one vector
         # Moving the grid_size to the second dimension for easier matrix operations
@@ -69,7 +70,7 @@ class YoloLayer(nn.Module):
         x = x.permute(0,3,1,2).contiguous()
 
         # Grid offsets for each grid cell
-        grid = torch.arange(start=0, end=grid_dim, step=1, device=get_device())
+        grid = torch.arange(start=0, end=grid_dim, step=1, device=device)
         y_offset, x_offset = torch.meshgrid(grid,grid)
 
         x_offset = x_offset.flatten()
