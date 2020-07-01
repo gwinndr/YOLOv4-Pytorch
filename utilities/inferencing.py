@@ -1,8 +1,9 @@
+import torch
 import time
 
 from utilities.constants import *
 
-from utilities.devices import get_device, synchronize_device
+from utilities.devices import synchronize_device
 from utilities.images import preprocess_image_eval, draw_detections
 from utilities.detections import extract_detections, correct_detections
 
@@ -18,7 +19,7 @@ def inference(model, input_tensor, obj_thresh):
     ----------
     """
 
-    model = model.eval()
+    model.eval()
     with torch.no_grad():
         # Running the model
         predictions = model(input_tensor)

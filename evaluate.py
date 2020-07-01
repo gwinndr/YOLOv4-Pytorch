@@ -5,7 +5,7 @@ from utilities.constants import *
 from datasets.coco import CocoDataset, coco_evaluate_bbox
 
 from utilities.devices import get_device
-from utilities.configs import parse_config, parse_names
+from utilities.configs import parse_config
 from utilities.weights import load_weights
 
 def main():

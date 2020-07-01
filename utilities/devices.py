@@ -2,7 +2,6 @@
 #### ONLY USE PROVIDED FUNCTIONS, DO NOT USE GLOBAL CONSTANTS ####
 
 import torch
-import platform
 
 TORCH_CPU_DEVICE = torch.device("cpu")
 

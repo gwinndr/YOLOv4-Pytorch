@@ -1,5 +1,5 @@
 import torch
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset
 from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
 import os
@@ -7,7 +7,6 @@ import cv2
 
 from utilities.constants import *
 
-from utilities.devices import get_device
 from utilities.file_io import load_image
 
 from utilities.inferencing import inference_on_image

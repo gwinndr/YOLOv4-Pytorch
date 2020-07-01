@@ -2,7 +2,6 @@ import torch
 
 from .constants import *
 from .nms import run_nms_inplace
-from .images import get_letterbox_image_embedding
 
 # extract_detections
 def extract_detections(all_preds, yolo_layers, obj_thresh):
