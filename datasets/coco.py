@@ -57,32 +57,45 @@ class CocoDataset(Dataset):
 
 
 # coco_evaluate_bbox
-def coco_evaluate_bbox(coco_dataset, model, network_dim, obj_thresh, letterbox):
+def coco_evaluate_bbox(coco_dataset, model, network_dim, obj_thresh, letterbox, max_imgs=0):
+    """
+    ----------
+    Author: Damon Gwinn (gwinndr)
+    ----------
+    - Evaluates model on the given coco_dataset
+    - Returns precision and recall statistics given by pycocotools
+    - Can limit images evaluated with max_imgs argument. If max_imgs <= 0, all images in the dataset are evaluated.
+    ----------
+    """
+
+    # Evaluate all images in the given dataset if max_imgs <= 0
+    if(max_imgs <= 0):
+        max_imgs = len(coco_dataset)
+
     model.eval()
     with torch.no_grad():
-        n_images = len(coco_dataset)
         yolo_layers = model.get_yolo_layers()
         imgs_done = 0
 
         model_dts = []
         all_img_ids = []
-        for img_id in coco_dataset.img_ids:
-            # if(imgs_done >= 50):
-            #     break
+        for i in range(max_imgs):
+            img_id = coco_dataset.img_ids[i]
 
+            # Inferencing on coco image
             image = coco_dataset.load_image_by_id(img_id)
-
             detections = inference_on_image(model, image, network_dim, obj_thresh, letterbox)
 
+            # Converting yolo detections to coco detection format (appends to model_dts)
             detections_to_coco_format(detections, img_id, model_dts)
-            all_img_ids.append(img_id)
 
-            imgs_done += 1
-            print("Evaluated %d out of %d" % (imgs_done, n_images), end=CARRIAGE_RETURN, flush=True)
+            # Appending to all_img_ids for COCOeval
+            all_img_ids.append(img_id)
+            print("Evaluated %d out of %d" % (i+1, max_imgs), end=CARRIAGE_RETURN, flush=True)
 
         print("")
 
-        # print(model_dts)
+        # Evaluation of coco images using the API
         coco_dts = coco_dataset.coco_api.loadRes(model_dts)
         coco_evaluator = COCOeval(coco_dataset.coco_api, coco_dts, COCO_ANN_TYPE_BBOX)
         coco_evaluator.params.imgIds = all_img_ids
@@ -92,7 +105,17 @@ def coco_evaluate_bbox(coco_dataset, model, network_dim, obj_thresh, letterbox):
 
     return coco_evaluator.stats
 
+# detections_to_coco_format
 def detections_to_coco_format(detections, img_id, model_dts=None):
+    """
+    ----------
+    Author: Damon Gwinn (gwinndr)
+    ----------
+    - Converts yolo model detections to coco detection format as expected by pycocotools
+    - If model_dts is None, returns a list of converted detections. If model_dts is a list, converted detections are appended to it in_place.
+    ----------
+    """
+
     if(model_dts is None):
         model_dts = []
 
@@ -102,6 +125,7 @@ def detections_to_coco_format(detections, img_id, model_dts=None):
         width = float(dt[DETECTION_X2]) - x1
         height = float(dt[DETECTION_Y2]) - y1
 
+        # The API expects the coco 91 class format
         coco_80 = round(float(dt[DETECTION_CLASS_IDX]))
         coco_91 = COCO_80_TO_91[coco_80]
 

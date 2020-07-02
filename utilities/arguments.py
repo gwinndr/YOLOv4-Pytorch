@@ -34,3 +34,30 @@ def parse_detect_args():
     parser.add_argument("--force_cpu", action="store_true", help="Forces the model to run on the cpu regardless of cuda status")
 
     return parser.parse_args()
+
+# parse_evaluate_args
+def parse_evaluate_args():
+    """
+    ----------
+    Author: Damon Gwinn (gwinndr)
+    ----------
+    - Argparse arguments for evaluate.py
+    ----------
+    """
+
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("-images", type=str, default="./COCO/2017/val2017/", help="Folder containing validation images")
+    parser.add_argument("-anns", type=str, default="./COCO/2017/annotations/instances_val2017.json", help="File containing bbox annotations for validation images")
+    parser.add_argument("-max_imgs", type=int, default=0, help="Specifies upper bound on the number of validation images processed. If <= 0, all validation images are processed.")
+
+    parser.add_argument("-cfg", type=str, default="./configs/yolov4.cfg", help="Yolo configuration file")
+    parser.add_argument("-weights", type=str, default="./weights/yolov4.weights", help="Yolo weights file")
+
+    parser.add_argument("-obj_thresh", type=float, default=OBJ_THRESH_DEFAULT, help="Confidence threshold for filtering out predictions")
+    parser.add_argument("--no_letterbox", action="store_true", help="Turns off image input letterboxing (degrades detector performance)")
+
+    parser.add_argument("--print_network", action="store_true", help="Print out each layer in the darknet model with their hyperparameters")
+    parser.add_argument("--force_cpu", action="store_true", help="Forces the model to run on the cpu regardless of cuda status")
+
+    return parser.parse_args()
