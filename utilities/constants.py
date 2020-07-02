@@ -26,10 +26,14 @@ MODEL_WITH_PP = 2 # Fps running pre/post-processing + MODEL_ONLY
 MODEL_WITH_IO = 3 # Fps running file io + MODEL_WITH_PP
 
 ##### BBOX DRAWING #####
+# Specific to draw_detections
 BBOX_INCLUDE_CLASS_CONF = True
 
+# Specific to both draw_detections and draw_annotations
 BBOX_COLORS = ( (255,0,255),(0,0,255),(0,255,255),(0,255,0),(255,255,0),(255,100,100) )
 COLOR_BLACK = (0,0,0)
+
+# Rest are specific to draw_bbox_inplace
 BBOX_FONT = cv2.FONT_HERSHEY_SIMPLEX
 BBOX_RECT_THICKNESS = 1
 BBOX_FONT_SCALE = 0.8
@@ -89,20 +93,33 @@ YOLO_TH = 3
 YOLO_OBJ = 4
 YOLO_CLASS_START = 5
 
-# Raw output dimensions from yolo model when in eval mode
+# Raw output dimensions from darknet model when in eval mode
 YOLO_OUT_BATCH_DIM = 0
 YOLO_OUT_N_PREDS_DIM = 1
 YOLO_OUT_ATTRS_DIM = 2
 
-# Output order for each extracted yolo detection
+# Output order for each extracted darknet detection
 DETECTION_X1 = 0
 DETECTION_Y1 = 1
 DETECTION_X2 = 2
 DETECTION_Y2 = 3
 DETECTION_CLASS_IDX = 4
 DETECTION_CLASS_PROB = 5
+DETECTION_N_ELEMS = 6 # The number of attributes for each darknet detection
 
-DETECTION_N_ELEMS = 6 # The number of attributes for each yolo detection
+# Darknet bbox annotation format
+ANN_BBOX_X1 = 0
+ANN_BBOX_Y1 = 1
+ANN_BBOX_X2 = 2
+ANN_BBOX_Y2 = 3
+ANN_BBOX_CLASS = 4
+ANN_BBOX_N_ELEMS = 5 # Number of attributes for each annotation
+
+# Coco bbox annotation format
+COCO_ANN_BBOX_X = 0
+COCO_ANN_BBOX_Y = 1
+COCO_ANN_BBOX_W = 2
+COCO_ANN_BBOX_H = 3
 
 # Other
 YOLO_N_BBOX_ATTRS = 5 # x,y,w,h,obj
@@ -127,6 +144,10 @@ CV2_H_DIM = 0
 CV2_W_DIM = 1
 CV2_C_DIM = 2
 CV2_N_DIMS = 3
+
+TENSOR_C_DIM = 0
+TENSOR_H_DIM = 1
+TENSOR_W_DIM = 2
 
 BBOX_X1 = 0
 BBOX_Y1 = 1
