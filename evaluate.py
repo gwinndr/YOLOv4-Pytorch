@@ -34,7 +34,11 @@ def main():
         model = model.to(get_device())
         model.eval()
 
-        # TODO
+        # Network input dim
+        if(model.net_block["width"] != model.net_block["height"]):
+            print("Error: Width and height must match in [net]")
+            return
+
         network_dim = int(model.net_block["width"])
 
         print("Loading weights...")
