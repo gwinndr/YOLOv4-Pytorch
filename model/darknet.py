@@ -36,7 +36,7 @@ class Darknet(nn.Module):
         Author: Damon Gwinn (gwinndr)
         ----------
         - Runs the given input through the Yolo model
-        - Eval mode: Returns predictions (will need to run utilities.postprocess.extract_detections)
+        - Eval mode: Returns predictions (will need to run extract_detections)
         ----------
         """
         predictions = []
