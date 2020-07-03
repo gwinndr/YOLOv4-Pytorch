@@ -94,9 +94,9 @@ YOLO_OBJ = 4
 YOLO_CLASS_START = 5
 
 # Raw output dimensions from darknet model when in eval mode
-YOLO_OUT_BATCH_DIM = 0
-YOLO_OUT_N_PREDS_DIM = 1
-YOLO_OUT_ATTRS_DIM = 2
+PREDS_BATCH_DIM = 0
+PREDS_N_PREDS_DIM = 1
+PREDS_ATTRS_DIM = 2
 
 # Output order for each extracted darknet detection
 DETECTION_X1 = 0

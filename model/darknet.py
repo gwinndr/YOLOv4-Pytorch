@@ -56,7 +56,7 @@ class Darknet(nn.Module):
             # Saving outputs
             saved_outputs.append(x)
 
-        predictions = torch.cat(predictions, dim=YOLO_OUT_N_PREDS_DIM)
+        predictions = torch.cat(predictions, dim=PREDS_N_PREDS_DIM)
         return predictions
 
     # get_net_block
