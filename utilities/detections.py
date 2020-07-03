@@ -14,7 +14,7 @@ def extract_detections(all_preds, obj_thresh):
     - Returns a list of detection tensors where each index of the list represents the batch index
     ----------
     """
-    
+
     all_detections = []
 
     # Getting detections on a batch by batch basis
@@ -98,7 +98,6 @@ def predictions_to_detections(preds):
     Author: Damon Gwinn (gwinndr)
     ----------
     - Converts given preds to detections
-    - Assumes class scores have already been multiplied by object score
     - This is a helper function that converts all given preds from prediction format to
       detection format, use extract_detections instead
     ----------
