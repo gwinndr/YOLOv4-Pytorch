@@ -28,7 +28,7 @@ def inference(model, input_tensor, obj_thresh):
         predictions = model(input_tensor)
 
         # Extracting detections from predictions
-        detections = extract_detections(predictions, model.get_yolo_layers(), obj_thresh)
+        detections = extract_detections(predictions, obj_thresh)
 
     return detections
 
@@ -44,9 +44,6 @@ def inference_on_image(model, image, network_dim, obj_thresh, letterbox):
     ----------
     """
 
-    yolo_layers = model.get_yolo_layers()
-    yolo_layer = yolo_layers[0]
-
     # Preprocessing
     input_tensor, img_info = preprocess_image_eval(image, network_dim, letterbox)
     input_tensor = input_tensor.unsqueeze(0) # batch dim
@@ -54,7 +51,7 @@ def inference_on_image(model, image, network_dim, obj_thresh, letterbox):
     detections = inference(model, input_tensor, obj_thresh)[0]
 
     # Postprocessing
-    detections = run_nms(detections, yolo_layer, obj_thresh)
+    detections = run_nms(detections, model, obj_thresh)
     detections = correct_detections(detections, img_info)
 
     return detections
@@ -75,9 +72,6 @@ def inference_video_to_video(model, video_in, video_out, class_names, network_di
         - MODEL_WITH_IO: Darknet model with all pre and post-processing plus file io time
     ----------
     """
-
-    yolo_layers = model.get_yolo_layers()
-    yolo_layer = yolo_layers[0]
 
     # Benchmarking
     fps = None
@@ -120,7 +114,7 @@ def inference_video_to_video(model, video_in, video_out, class_names, network_di
                 sum_time += time.time() - start_time
 
             # Postprocessing
-            detections = run_nms(detections, yolo_layer, obj_thresh)
+            detections = run_nms(detections, model, obj_thresh)
             detections = correct_detections(detections, img_info)
             output_frame = draw_detections(detections, frame, class_names, verbose_output=False)
 

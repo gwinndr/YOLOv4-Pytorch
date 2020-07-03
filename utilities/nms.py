@@ -5,7 +5,7 @@ from utilities.constants import *
 from utilities.detections import filter_detections
 
 # run_nms
-def run_nms(dets, yolo_layer, obj_thresh, nms_thresh=NMS_THRESHOLD):
+def run_nms(dets, model, obj_thresh, nms_thresh=NMS_THRESHOLD):
     """
     ----------
     Author: Damon Gwinn (gwinndr)
@@ -16,6 +16,9 @@ def run_nms(dets, yolo_layer, obj_thresh, nms_thresh=NMS_THRESHOLD):
     - Input must be given in darknet detection format like those returned from extract_detections
     ----------
     """
+
+    # Only need one since nms values must be consistent (see verify_yolo_hyperparams in configs.py)
+    yolo_layer = model.get_yolo_layers()[0]
 
     if(yolo_layer.nms_kind == GREEDY_NMS):
         greedy_nms_inplace(dets, nms_thresh)

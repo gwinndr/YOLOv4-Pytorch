@@ -29,7 +29,6 @@ def parse_names(names_path):
 
     return lines
 
-
 # parse_config
 def parse_config(config_path):
     """
@@ -59,7 +58,33 @@ def parse_config(config_path):
     blocks = parse_lines_into_blocks(lines)
     model = parse_blocks_into_model(blocks)
 
+    # Making sure hyperparameters that need to be the same, are the same
+    consistent = verify_yolo_hyperparams(model.get_yolo_layers())
+    if(not consistent):
+        model = None
+
     return model
+
+# verify_yolo_hyperparams
+def verify_yolo_hyperparams(yolo_layers):
+    """
+    ----------
+    Author: Damon Gwinn (gwinndr)
+    ----------
+    - Verifies hyperparams that should be the same across yolo layers (like nms_kind) are the same
+    - Returns True if all is good, False if all is not good
+    ----------
+    """
+
+    if(len(yolo_layers) > 1):
+        ref_layer = yolo_layers[0]
+
+        for yolo_layer in yolo_layers[1:]:
+            if(yolo_layer.nms_kind != ref_layer.nms_kind):
+                print("verify_yolo_hyperparams: Error: nms_kind not consistent across all yolo layers")
+                return False
+
+    return True
 
 # parse_lines_into_blocks
 def parse_lines_into_blocks(lines):

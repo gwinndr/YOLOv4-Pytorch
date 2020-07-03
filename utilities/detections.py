@@ -3,7 +3,7 @@ import torch
 from .constants import *
 
 # extract_detections
-def extract_detections(all_preds, yolo_layers, obj_thresh):
+def extract_detections(all_preds, obj_thresh):
     """
     ----------
     Author: Damon Gwinn (gwinndr)
@@ -14,17 +14,12 @@ def extract_detections(all_preds, yolo_layers, obj_thresh):
     - Returns a list of detection tensors where each index of the list represents the batch index
     ----------
     """
-
-    # Verifies that postprocessing hyperparameters are the same across all yolo layers
-    # success = verify_yolo_hyperparams(yolo_layers)
-
-    yolo_layer = yolo_layers[0]
-
+    
     all_detections = []
 
     # Getting detections on a batch by batch basis
     for b, batch_preds in enumerate(all_preds):
-        batch_detections = extract_detections_single_image(batch_preds, yolo_layer, obj_thresh)
+        batch_detections = extract_detections_single_image(batch_preds, obj_thresh)
         all_detections.append(batch_detections)
 
     # print(all_detections)
@@ -75,7 +70,7 @@ def correct_detections(detections, image_info, clamp_detections=False):
     return detections
 
 # extract_detections_single_image
-def extract_detections_single_image(preds, yolo_layer, obj_thresh):
+def extract_detections_single_image(preds, obj_thresh):
     """
     ----------
     Author: Damon Gwinn (gwinndr)
