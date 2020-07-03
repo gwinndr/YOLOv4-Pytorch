@@ -238,10 +238,12 @@ def tensor_to_image(tensor):
     # Moving channel dimension back to normal
     tensor = tensor.permute(TENSOR_H_DIM, TENSOR_W_DIM, TENSOR_C_DIM).contiguous()
 
-    # Convert back to uint8
+    # Convert back to cv2
     image = tensor.cpu().numpy()
-    image *= 255.0
-    image = image.astype(np.uint8)
+
+    # Convert to uint8
+    if(image.dtype == np.float32):
+        image = image_float_to_uint8(image)
 
     # bgr
     image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
@@ -249,23 +251,56 @@ def tensor_to_image(tensor):
     return image
 
 # image_to_tensor
-def image_to_tensor(image):
+def image_to_tensor(image, device=None):
     """
     ----------
     Author: Damon Gwinn (gwinndr)
     ----------
     - Converts cv2 image into a pytorch input tensor
     - Helper function, recommended you use one of preprocess_image_eval or preprocess_image_train
+    - If device is None, uses the default device (get_device)
     ----------
     """
+
+    if(device is None):
+        device = get_device()
 
     # rgb
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
     # normalize
-    norm_image = image.astype(np.float32) / 255.0
+    if(image.dtype == np.uint8):
+        image = image_uint8_to_float(image)
 
     # then convert to tensor
-    tensor = torch.tensor(norm_image, device=get_device(), dtype=torch.float32)
+    tensor = torch.from_numpy(image).to(device)
     tensor = tensor.permute(CV2_C_DIM, CV2_H_DIM, CV2_W_DIM).contiguous()
+
     return tensor
+
+# image_uint8_to_float
+def image_uint8_to_float(image):
+    """
+    ----------
+    Author: Damon Gwinn (gwinndr)
+    ----------
+    - Converts cv2 image from uint8 (0-255) to float (0-1)
+    - In other words, normalizes an image
+    ----------
+    """
+
+    return image.astype(np.float32) / 255.0
+
+# image_float_to_uint8
+def image_float_to_uint8(image):
+    """
+    ----------
+    Author: Damon Gwinn (gwinndr)
+    ----------
+    - Converts cv2 image from float (0-1) to uint8 (0-255)
+    - In other words, un-normalizes an image
+    ----------
+    """
+
+    image = image * 255.0
+    return image.astype(np.uint8)

@@ -6,7 +6,7 @@ class ImageInfo:
     ----------
     Author: Damon Gwinn (gwinndr)
     ----------
-    - Contains information about the image being input into yolo
+    - Contains information about the image being input into darknet
     - This class is used when inferencing to map detections back to the original image
     ----------
     """
