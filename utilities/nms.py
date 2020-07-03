@@ -2,53 +2,44 @@ import torch
 
 from utilities.constants import *
 
-# run_nms_inplace
-def run_nms_inplace(preds, yolo_layer):
+from utilities.detections import filter_detections
+
+# run_nms
+def run_nms(dets, yolo_layer, obj_thresh, nms_thresh=NMS_THRESHOLD):
     """
     ----------
     Author: Damon Gwinn (gwinndr)
     ----------
     - Performs nms inplace on preds according to method and hyperparams specified by yolo_layer
     - Nms will decrease the lower of two class confidence scores of bboxes found to overlap
-    - Assumes class confidence scores have already been multiplied by objectness
-    - Assumes bounding box coordinate information in preds (tx,ty,tw,th) is the exact same as
-      was returned from the darknet model
+    - After nms is performed, low confidence detections are filtered out according to given obj_thresh
+    - Input must be given in darknet detection format like those returned from extract_detections
     ----------
     """
 
     if(yolo_layer.nms_kind == GREEDY_NMS):
-        greedy_nms_inplace(preds)
+        greedy_nms_inplace(dets, nms_thresh)
 
-    return
+    # Filtering out detections without a class prob greater than obj_thresh
+    filtered_dets = filter_detections(dets, obj_thresh)
+
+    return filtered_dets
 
 # greedy_nms_inplace
-def greedy_nms_inplace(preds, nms_thresh=NMS_THRESHOLD):
+def greedy_nms_inplace(dets, nms_thresh=NMS_THRESHOLD):
     """
     ----------
     Author: Damon Gwinn (gwinndr)
     ----------
-    - Performs greedy nms inplace on preds
+    - Performs greedy nms inplace on given detections
     - Greedy nms forces the lower of two same class probabilities to 0 if the IOU between their respective
       bounding boxes is greater than NMS_THRESHOLD
-    - Assumes class confidence scores have already been multiplied by objectness
-    - Assumes bounding box coordinate information in preds (tx,ty,tw,th) is the exact same as
-      was returned from the darknet model
+    - Input must be given in darknet detection format like those returned from extract_detections
     ----------
     """
 
-    bbox_attrs = preds[..., YOLO_TX:YOLO_TH+1]
-    class_probs = preds[..., YOLO_CLASS_START:]
-
-    bboxes = torch.zeros(bbox_attrs.shape, dtype=bbox_attrs.dtype, device=bbox_attrs.device)
-
-    half_w = bbox_attrs[..., YOLO_TW] / 2
-    half_h = bbox_attrs[..., YOLO_TH] / 2
-
-    # Bounding box top-left (x1y1) and bottom-right (x2y2) coordinates
-    bboxes[..., BBOX_X1] = bbox_attrs[..., YOLO_TX] - half_w
-    bboxes[..., BBOX_Y1] = bbox_attrs[..., YOLO_TY] - half_h
-    bboxes[..., BBOX_X2] = bbox_attrs[..., YOLO_TX] + half_w
-    bboxes[..., BBOX_Y2] = bbox_attrs[..., YOLO_TY] + half_h
+    bboxes = dets[..., DETECTION_X1:DETECTION_Y2+1]
+    class_probs = dets[..., DETECTION_CLASS_START:]
 
     # Doing a cartesian product via for loops (TODO: Could be optimized to remove the for loop I'm sure)
     for i, bbox in enumerate(bboxes[:-1]):

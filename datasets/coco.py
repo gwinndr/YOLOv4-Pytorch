@@ -10,6 +10,7 @@ from utilities.devices import cpu_device
 
 from utilities.images import load_image, image_to_tensor
 from utilities.inferencing import inference_on_image
+from utilities.detections import detections_best_class
 
 # CocoDataset
 class CocoDataset(Dataset):
@@ -123,7 +124,6 @@ class CocoDataset(Dataset):
 
         return darknet_anns
 
-
 # coco_evaluate_bbox
 def coco_evaluate_bbox(coco_dataset, model, network_dim, obj_thresh, letterbox, max_imgs=0):
     """
@@ -187,20 +187,23 @@ def detections_to_coco_format(detections, img_id, model_dts=None):
     if(model_dts is None):
         model_dts = []
 
-    for dt in detections:
+    class_confs, classes = detections_best_class(detections)
+
+    for i, dt in enumerate(detections):
         x1 = float(dt[DETECTION_X1])
         y1 = float(dt[DETECTION_Y1])
         width = float(dt[DETECTION_X2]) - x1
         height = float(dt[DETECTION_Y2]) - y1
+        class_conf = float(class_confs[i])
 
         # The API expects the coco 91 class format
-        coco_80 = round(float(dt[DETECTION_CLASS_IDX]))
+        coco_80 = int(classes[i])
         coco_91 = COCO_80_TO_91[coco_80]
 
         coco_dt = dict()
         coco_dt["image_id"] = img_id
         coco_dt["bbox"] = [x1, y1, width, height]
-        coco_dt["score"] = float(dt[DETECTION_CLASS_PROB])
+        coco_dt["score"] = class_conf
         coco_dt["category_id"] = coco_91
 
         model_dts.append(coco_dt)

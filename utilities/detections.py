@@ -1,7 +1,6 @@
 import torch
 
 from .constants import *
-from .nms import run_nms_inplace
 
 # extract_detections
 def extract_detections(all_preds, yolo_layers, obj_thresh):
@@ -89,37 +88,11 @@ def extract_detections_single_image(preds, yolo_layer, obj_thresh):
 
     # First filter out low objectness
     thresh_mask = preds[..., YOLO_OBJ] > obj_thresh
-    preds_thresh = preds[thresh_mask]
+    valid_preds = preds[thresh_mask]
 
-    detections = None
-
-    if(len(preds_thresh) > 0):
-
-        # Get full class probs by multiplying class score with objectness
-        # We need a num values dimension on the object scores (unsqueeze) to get pytorch to broadcast properly
-        preds_obj = preds_thresh[..., YOLO_OBJ].unsqueeze(1)
-        class_probs = preds_thresh[..., YOLO_CLASS_START:]
-        class_probs *= preds_obj
-
-        # Perform NMS with class probabilities
-        run_nms_inplace(preds_thresh, yolo_layer)
-        # class_probs = preds_thresh[..., YOLO_CLASS_START:]
-
-        # Filter out predictions without a class prob > thresh
-        class_mask = class_probs > obj_thresh
-        class_mask = torch.sum(class_mask, dim=1).bool()
-        valid_preds = preds_thresh[class_mask]
-        n_dets = len(valid_preds)
-
-        # Convert to detection format
-        if(n_dets > 0):
-            detections = predictions_to_detections(valid_preds)
-
-
-    # Dummy tensor to represent 0 detections (makes concatenations easier)
-    if(detections is None):
-        detections = torch.empty((0, DETECTION_N_ELEMS), device=preds.device, dtype=preds.dtype)
-
+    # Converting to detections and filtering out detections with class prob lower than object thresh
+    detections = predictions_to_detections(valid_preds)
+    detections = filter_detections(detections, obj_thresh)
 
     return detections
 
@@ -130,25 +103,69 @@ def predictions_to_detections(preds):
     Author: Damon Gwinn (gwinndr)
     ----------
     - Converts given preds to detections
+    - Assumes class scores have already been multiplied by object score
     - This is a helper function that converts all given preds from prediction format to
       detection format, use extract_detections instead
     ----------
     """
 
     n_preds = len(preds)
-    best_class_prob, best_class_idx = torch.max(preds[..., YOLO_CLASS_START:], dim=1)
-    best_class_prob = best_class_prob
-    best_class_idx = best_class_idx
 
+    # Half width and height for offsetting from center point
     half_w = preds[..., YOLO_TW] / 2
     half_h = preds[..., YOLO_TH] / 2
 
-    detections = torch.zeros((n_preds, DETECTION_N_ELEMS), dtype=preds.dtype, device=preds.device)
+    # Get full class probs by multiplying class score with objectness
+    # We need a num values dimension on the object scores (unsqueeze) to get pytorch to broadcast properly
+    preds_obj = preds[..., YOLO_OBJ].unsqueeze(1)
+    class_scores = preds[..., YOLO_CLASS_START:]
+    class_probs = class_scores * preds_obj
+
+    n_classes = class_probs.shape[-1]
+    detection_n_elems = DETECTION_CLASS_START + n_classes
+
+    # Creating detections
+    detections = torch.zeros((n_preds, detection_n_elems), dtype=preds.dtype, device=preds.device)
     detections[..., DETECTION_X1] = preds[..., YOLO_TX] - half_w
     detections[..., DETECTION_Y1] = preds[..., YOLO_TY] - half_h
     detections[..., DETECTION_X2] = preds[..., YOLO_TX] + half_w
     detections[..., DETECTION_Y2] = preds[..., YOLO_TY] + half_h
-    detections[..., DETECTION_CLASS_IDX] = best_class_idx
-    detections[..., DETECTION_CLASS_PROB] = best_class_prob
+    detections[..., DETECTION_CLASS_START:] = class_probs
 
     return detections
+
+# filter_detections
+def filter_detections(dets, obj_thresh):
+    """
+    ----------
+    Author: Damon Gwinn (gwinndr)
+    ----------
+    - Filters out detections without a class prob greater than obj_thresh
+    - Returns detections with low confidence detections filtered out
+    ----------
+    """
+
+    class_probs, _ = detections_best_class(dets)
+
+    class_mask = class_probs > obj_thresh
+    valid_dets = dets[class_mask]
+
+    return valid_dets
+
+# best_class
+def detections_best_class(dets):
+    """
+    ----------
+    Author: Damon Gwinn (gwinndr)
+    ----------
+    - Returns the highest confidence class along with its confidence
+    ----------
+    """
+
+    if(len(dets) == 0):
+        confs = torch.empty((0,))
+        cl = confs
+    else:
+        confs, cl = torch.max(dets[..., DETECTION_CLASS_START:], dim=-1)
+
+    return confs, cl

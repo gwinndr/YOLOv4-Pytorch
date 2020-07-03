@@ -103,9 +103,7 @@ DETECTION_X1 = 0
 DETECTION_Y1 = 1
 DETECTION_X2 = 2
 DETECTION_Y2 = 3
-DETECTION_CLASS_IDX = 4
-DETECTION_CLASS_PROB = 5
-DETECTION_N_ELEMS = 6 # The number of attributes for each darknet detection
+DETECTION_CLASS_START = 4 # Class scores for the n classes
 
 # Darknet bbox annotation format
 ANN_BBOX_X1 = 0

@@ -5,6 +5,8 @@ import numpy as np
 from .constants import *
 from .devices import get_device, cpu_device
 
+from utilities.detections import detections_best_class
+
 # load_image
 def load_image(image_file):
     """
@@ -72,9 +74,9 @@ def draw_detections(detections, image, class_names, verbose_output=False):
 
     image = image.copy()
 
+    # Grabbing bboxes and the classes with the best confidence
     bboxes = detections[..., DETECTION_X1:DETECTION_Y2+1]
-    classes = detections[..., DETECTION_CLASS_IDX]
-    class_confs = detections[..., DETECTION_CLASS_PROB]
+    class_confs, classes = detections_best_class(detections)
 
     # Sort by confidence (better bbox color stability on videos)
     _, indices = torch.sort(class_confs, dim=0, descending=True)
