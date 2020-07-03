@@ -8,10 +8,8 @@ from utilities.configs import parse_config, parse_names
 from utilities.weights import load_weights
 
 from utilities.devices import gpu_device_name, get_device, use_cuda
-from utilities.file_io import load_image
-
+from utilities.images import draw_detections, load_image
 from utilities.inferencing import inference_on_image, inference_video_to_video
-from utilities.images import draw_detections
 
 # main
 def main():

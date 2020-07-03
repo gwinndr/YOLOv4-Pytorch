@@ -6,9 +6,9 @@ import os
 import cv2
 
 from utilities.constants import *
+from utilities.devices import cpu_device
 
-from utilities.file_io import load_image
-
+from utilities.images import load_image, image_to_tensor
 from utilities.inferencing import inference_on_image
 
 # CocoDataset
@@ -18,6 +18,7 @@ class CocoDataset(Dataset):
     Author: Damon Gwinn (gwinndr)
     ----------
     - Pytorch Dataset object for MS-COCO
+    - __getitem__ should only be used for training, see coco_evaluate_bbox for validation
     ----------
     """
 
@@ -33,27 +34,94 @@ class CocoDataset(Dataset):
 
     # __len__
     def __len__(self):
+        """
+        ----------
+        Author: Damon Gwinn (gwinndr)
+        ----------
+        - Retuns the number of images given by the annotation file
+        ----------
+        """
+
         return len(self.img_ids)
 
     # __getitem__
     def __getitem__(self, idx):
+        """
+        ----------
+        Author: Damon Gwinn (gwinndr)
+        ----------
+        - Returns pre-processed input tensor with the bbox labels properly mapped to it
+        - Should only be used while training, see coco_evaluate_bbox for validation
+        ----------
+        """
+
         # Image ids given by index
         img_id = self.img_ids[idx]
+        image = self.load_image_by_id(img_id)
 
-        # Getting full file path prepended with 0's such that there's 12 characters
-        img_file = os.path.join(self.image_root, "%012d.jpg" % img_id)
+        # TODO: Add actual augmentations
+        img_tensor = image_to_tensor(image)
 
-        image = cv2.imread(img_file)
-        img_tensor, img_info = preprocess_image_eval(image, self.input_dim, self.letterbox, force_cpu=True)
+        anns = self.load_annotations_by_id(img_id)
 
-        return img_tensor, img_id, img_info
+        return img_tensor, anns
 
     # load_image_by_id
     def load_image_by_id(self, img_id):
+        """
+        ----------
+        Author: Damon Gwinn (gwinndr)
+        ----------
+        - Given an image id, returns the corresponding cv2 image
+        - Returns None if invalid
+        ----------
+        """
+
         # Getting full file path prepended with 0's such that there's 12 characters
         img_file = os.path.join(self.image_root, "%012d.jpg" % img_id)
 
         return load_image(img_file)
+
+    # load_annotations_by_id
+    def load_annotations_by_id(self, img_id):
+        """
+        ----------
+        Author: Damon Gwinn (gwinndr)
+        ----------
+        - Given an image id, returns the corresponding bbox annotations as a tensor
+        - Annotations are in Darknet annotation format (x1, y1, x2, y2, coco_80_class)
+        ----------
+        """
+
+        ann_id = self.coco_api.getAnnIds(imgIds=img_id)
+        coco_anns = self.coco_api.loadAnns(ann_id)
+
+        n_boxes = len(coco_anns)
+        darknet_anns = torch.zeros((n_boxes, ANN_BBOX_N_ELEMS), device=cpu_device(), dtype=torch.float32)
+
+        for i, coco_ann in enumerate(coco_anns):
+            coco_bbox = coco_ann["bbox"]
+            coco_91 = coco_ann["category_id"]
+
+            # Converting coco_91 to coco_80
+            try:
+                coco_80 = COCO_80_TO_91.index(coco_91)
+            except ValueError:
+                print("load_annotations_by_id: Warning: Could not convert coco 91 class", coco_91, "to coco 80. Ignoring this annotation.")
+                continue
+
+            x1 = coco_bbox[COCO_ANN_BBOX_X]
+            y1 = coco_bbox[COCO_ANN_BBOX_Y]
+            x2 = x1 + coco_bbox[COCO_ANN_BBOX_W]
+            y2 = y1 + coco_bbox[COCO_ANN_BBOX_H]
+
+            darknet_anns[i, ANN_BBOX_X1] = x1
+            darknet_anns[i, ANN_BBOX_Y1] = y1
+            darknet_anns[i, ANN_BBOX_X2] = x2
+            darknet_anns[i, ANN_BBOX_Y2] = y2
+            darknet_anns[i, ANN_BBOX_CLASS] = coco_80
+
+        return darknet_anns
 
 
 # coco_evaluate_bbox

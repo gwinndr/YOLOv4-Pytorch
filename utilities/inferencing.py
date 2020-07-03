@@ -4,7 +4,8 @@ import time
 from utilities.constants import *
 
 from utilities.devices import synchronize_device
-from utilities.images import preprocess_image_eval, draw_detections
+from utilities.images import draw_detections
+from utilities.preprocessing import preprocess_image_eval
 from utilities.detections import extract_detections, correct_detections
 
 # inference
