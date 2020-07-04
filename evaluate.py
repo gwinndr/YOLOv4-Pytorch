@@ -41,6 +41,9 @@ def main():
 
         network_dim = int(model.net_block["width"])
 
+        # Letterboxing
+        letterbox = not args.no_letterbox
+
         print("Loading weights...")
         version, imgs_seen = load_weights(model, args.weights)
 
@@ -52,7 +55,9 @@ def main():
         print("Weights:", args.weights)
         print("Version:", ".".join([str(v) for v in version]))
         print("Images seen:", imgs_seen)
+        print("")
         print("Network Dim:", network_dim)
+        print("Letterbox:", letterbox)
         print(SEPARATOR)
         print("")
 
@@ -64,9 +69,8 @@ def main():
         ann_file = args.anns
         max_imgs = args.max_imgs
         obj_thresh = args.obj_thresh
-        letterbox = not args.no_letterbox
 
-        val_dataset = CocoDataset(image_dir, ann_file)
+        val_dataset = CocoDataset(image_dir, input_dim=network_dim, letterbox=letterbox, annotation_file=ann_file)
         print("")
 
         coco_evaluate_bbox(val_dataset, model, network_dim, obj_thresh, letterbox, max_imgs)

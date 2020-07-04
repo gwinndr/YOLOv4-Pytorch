@@ -8,6 +8,7 @@ import cv2
 from utilities.constants import *
 from utilities.devices import cpu_device
 
+from utilities.preprocessing import preprocess_image_train
 from utilities.images import load_image, image_to_tensor
 from utilities.inferencing import inference_on_image
 from utilities.detections import detections_best_class
@@ -24,7 +25,7 @@ class CocoDataset(Dataset):
     """
 
     # __init__
-    def __init__(self, image_root, annotation_file=None, input_dim=INPUT_DIM_DEFAULT, letterbox=LETTERBOX_DEFAULT):
+    def __init__(self, image_root, input_dim, letterbox, annotation_file=None):
         self.image_root = image_root
         self.annotation_file = annotation_file
         self.input_dim = input_dim
@@ -60,10 +61,10 @@ class CocoDataset(Dataset):
         img_id = self.img_ids[idx]
         image = self.load_image_by_id(img_id)
 
-        # TODO: Add actual augmentations
-        img_tensor = image_to_tensor(image)
-
         anns = self.load_annotations_by_id(img_id)
+
+        # preprocessing
+        img_tensor, anns = preprocess_image_train(image, anns, self.input_dim, self.letterbox, force_cpu=True)
 
         return img_tensor, anns
 

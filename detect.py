@@ -56,6 +56,9 @@ def main():
 
         network_dim = int(model.net_block["width"])
 
+        # Letterboxing
+        letterbox = not args.no_letterbox
+
         print("Parsing class names...")
         class_names = parse_names(args.class_names)
         if(class_names is None):
@@ -72,7 +75,9 @@ def main():
         print("Weights:", args.weights)
         print("Version:", ".".join([str(v) for v in version]))
         print("Images seen:", imgs_seen)
+        print("")
         print("Network Dim:", network_dim)
+        print("Letterbox:", letterbox)
         print(SEPARATOR)
         print("")
 
@@ -81,7 +86,6 @@ def main():
             model.print_network()
 
         obj_thresh = args.obj_thresh
-        letterbox = not args.no_letterbox
 
         ##### IMAGE DETECTION #####
         if(not args.video):
