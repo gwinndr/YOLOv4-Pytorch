@@ -231,6 +231,8 @@ def parse_block(block, layer_output_channels, layer_idx):
     return parsed_layer, out_channels
 
 
+##### LAYER PARSING #####
+
 # parse_convolutional_block
 def parse_convolutional_block(block, in_channels, layer_idx):
     """
@@ -545,7 +547,7 @@ def parse_yolo_block(block, layer_idx):
 
     # end for
 
-    # Validation (NOTE: Ignoring truth_thresh since it is unused in actual yolo)
+    # Validation
     if(mask is None):
         print("parse_yolo_block: Error on layer_idx", layer_idx, ": Missing 'mask' entry")
         error_state = True
@@ -562,20 +564,20 @@ def parse_yolo_block(block, layer_idx):
         print("parse_yolo_block: Error on layer_idx", layer_idx, ": Missing 'ignore_thresh' entry")
         error_state = True
 
-    # More validation and extraction
-    anchors_masked = []
+    # Anchor mask validation
     if(not error_state):
         if(num != len(anchors)):
-            print("parse_yolo_block: Error: 'num' entry must equal number of anchors")
+            print("parse_yolo_block: Error on layer_idx", layer_idx, ": 'num' entry must equal number of anchors")
             error_state = True
         else:
             for m in mask:
-                anchors_masked.append(anchors[m])
+                if(m < 0 or m >= num):
+                    print("parse_yolo_block: Error on layer_idx", layer_idx, ": Mask index is invalid for given anchors")
 
 
     # Setting up YoloLayer
     if(not error_state):
-        yolo_layer = YoloLayer(anchors_masked, classes, ignore_thresh, truth_thresh, random,
+        yolo_layer = YoloLayer(anchors, mask, classes, ignore_thresh, truth_thresh, random,
                                 jitter, scale_xy, iou_thresh, cls_norm, iou_norm, iou_loss,
                                 nms_kind, beta_nms, max_delta)
 

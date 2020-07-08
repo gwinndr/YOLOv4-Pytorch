@@ -15,7 +15,7 @@ class YoloLayer(nn.Module):
     """
 
     # __init__
-    def __init__(self, anchors, n_classes, ignore_thresh, truth_thresh, random=YOLO_RANDOM,
+    def __init__(self, anchors, anchor_mask, n_classes, ignore_thresh, truth_thresh, random=YOLO_RANDOM,
         jitter=YOLO_JITTER, scale_xy=YOLO_SCALEXY, iou_thresh=YOLO_IOU_THRESH, cls_norm=YOLO_CLS_NORM,
         iou_norm=YOLO_IOU_NORM, iou_loss=YOLO_IOU_LOSS, nms_kind=YOLO_NMS_KIND, beta_nms=YOLO_BETA_NMS,
         max_delta=YOLO_MAX_DELTA):
@@ -26,7 +26,8 @@ class YoloLayer(nn.Module):
         self.requires_layer_outputs = False
         self.is_output_layer = True
 
-        self.anchors = anchors
+        self.all_anchors = anchors
+        self.anchor_mask = anchor_mask
         self.n_classes = n_classes
         self.ignore_thresh = ignore_thresh
         self.truth_thresh = truth_thresh
@@ -58,10 +59,11 @@ class YoloLayer(nn.Module):
 
         batch_num = x.shape[INPUT_BATCH_DIM]
         attrs_per_anchor = self.n_classes + YOLO_N_BBOX_ATTRS
-        n_anchors = len(self.anchors)
+        n_anchors = len(self.anchor_mask)
         grid_size = grid_dim * grid_dim
 
-        anchors = [(anc[0] / grid_stride, anc[1] / grid_stride) for anc in self.anchors]
+        anchors = [self.all_anchors[i] for i in self.anchor_mask]
+        anchors = [(anc[0] / grid_stride, anc[1] / grid_stride) for anc in anchors]
         anchors = torch.tensor(anchors, device=device)
 
         # Combining grid_dims into one vector
