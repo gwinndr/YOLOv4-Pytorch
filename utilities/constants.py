@@ -113,6 +113,9 @@ ANN_BBOX_Y2 = 3
 ANN_BBOX_CLASS = 4
 ANN_BBOX_N_ELEMS = 5 # Number of attributes for each annotation
 
+# Value for padding annotations for batched annotations
+ANN_PAD_VAL = -1
+
 # Coco bbox annotation format
 COCO_ANN_BBOX_X = 0
 COCO_ANN_BBOX_Y = 1
@@ -141,7 +144,7 @@ INPUT_W_DIM = 3
 CV2_H_DIM = 0
 CV2_W_DIM = 1
 CV2_C_DIM = 2
-CV2_N_DIMS = 3
+CV2_N_DIMS = 3 # Number of cv2 dimensions
 
 TENSOR_C_DIM = 0
 TENSOR_H_DIM = 1

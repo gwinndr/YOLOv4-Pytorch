@@ -24,28 +24,39 @@ class Darknet(nn.Module):
         self.layer_modules = layer_modules
         self.net_block = net_block
 
+        self.training_custom = False
+
         self.yolo_layers = []
         for l in self.layer_modules:
             if(isinstance(l, YoloLayer)):
                 self.yolo_layers.append(l)
 
     # forward
-    def forward(self, x):
+    def forward(self, x, anns=None):
         """
         ----------
         Author: Damon Gwinn (gwinndr)
         ----------
         - Runs the given input through the Yolo model
-        - Eval mode: Returns predictions (will need to run extract_detections)
+        - Train mode: Returns loss based on given annotations
+        - Eval mode: Returns predictions
         ----------
         """
-        predictions = []
+
+        if(self.training_custom and (anns is None)):
+            print("Darknet: Error: In training mode without giving annotations")
+            return None
+
+        model_out = []
         saved_outputs = []
         input_dim = x.shape[INPUT_H_DIM]
 
         for i, module in enumerate(self.layer_modules):
             if(module.is_output_layer):
-                predictions.append(module(x, input_dim))
+                if(self.training_custom):
+                    model_out.append(module(x, input_dim, anns=anns))
+                else:
+                    model_out.append(module(x, input_dim))
 
             elif(module.requires_layer_outputs):
                 x = module(x, saved_outputs)
@@ -56,8 +67,11 @@ class Darknet(nn.Module):
             # Saving outputs
             saved_outputs.append(x)
 
-        predictions = torch.cat(predictions, dim=PREDS_N_PREDS_DIM)
-        return predictions
+        # if(not self.training):
+        if(not self.training_custom):
+            model_out = torch.cat(model_out, dim=PREDS_N_PREDS_DIM)
+
+        return model_out
 
     # get_net_block
     def get_net_block(self):
