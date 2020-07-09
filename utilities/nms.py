@@ -3,6 +3,7 @@ import torch
 from utilities.constants import *
 
 from utilities.detections import filter_detections
+from utilities.bboxes import bbox_iou_one_to_many
 
 # run_nms
 def run_nms(dets, model, obj_thresh, nms_thresh=NMS_THRESHOLD):
@@ -47,10 +48,9 @@ def greedy_nms_inplace(dets, nms_thresh=NMS_THRESHOLD):
     # Doing a cartesian product via for loops (TODO: Could be optimized to remove the for loop I'm sure)
     for i, bbox in enumerate(bboxes[:-1]):
         bboxes_b = bboxes[i+1:]
-        bboxes_a = bbox.expand_as(bboxes_b)
 
-        iou = bbox_iou(bboxes_a, bboxes_b)
-        thresh_mask = iou > nms_thresh
+        ious = bbox_iou_one_to_many(bbox, bboxes_b)
+        thresh_mask = ious > nms_thresh
 
         class_b = class_probs[i+1:]
         class_b_thresh = class_b[thresh_mask]
@@ -68,38 +68,3 @@ def greedy_nms_inplace(dets, nms_thresh=NMS_THRESHOLD):
         class_b[zero_mask_b] = 0
 
     return
-
-# bbox_iou
-# Modified from https://gist.github.com/meyerjo/dd3533edc97c81258898f60d8978eddc
-def bbox_iou(bboxes_a, bboxes_b):
-    """
-    ----------
-    Author: Johannes Meyer (meyerjo)
-    Modified: Damon Gwinn (gwinndr)
-    ----------
-    - Computes IOU elementwise between the bboxes in a and the bboxes in b
-    - Code modified from https://gist.github.com/meyerjo/dd3533edc97c81258898f60d8978eddc
-    ----------
-    """
-
-    # determine the (x, y)-coordinates of the intersection rectangle
-    xA = torch.max(bboxes_a[..., BBOX_X1], bboxes_b[..., BBOX_X1])
-    yA = torch.max(bboxes_a[..., BBOX_Y1], bboxes_b[..., BBOX_Y1])
-    xB = torch.min(bboxes_a[..., BBOX_X2], bboxes_b[..., BBOX_X2])
-    yB = torch.min(bboxes_a[..., BBOX_Y2], bboxes_b[..., BBOX_Y2])
-
-    # compute the area of intersection rectangle
-    interArea = torch.clamp(xB - xA, min=0) * torch.clamp(yB - yA, min=0)
-
-    # compute the area of both the prediction and ground-truth
-    # rectangles
-    bboxes_aArea = (bboxes_a[..., BBOX_X2] - bboxes_a[..., BBOX_X1]) * (bboxes_a[..., BBOX_Y2] - bboxes_a[..., BBOX_Y1])
-    bboxes_bArea = (bboxes_b[..., BBOX_X2] - bboxes_b[..., BBOX_X1]) * (bboxes_b[..., BBOX_Y2] - bboxes_b[..., BBOX_Y1])
-
-    # compute the intersection over union by taking the intersection
-    # area and dividing it by the sum of prediction + ground-truth
-    # areas - the interesection area
-    iou = interArea / (bboxes_aArea + bboxes_bArea - interArea)
-
-    # return the intersection over union value
-    return iou

@@ -2,6 +2,8 @@ import torch
 
 from .constants import *
 
+from utilities.bboxes import predictions_to_bboxes
+
 # extract_detections
 def extract_detections(all_preds, obj_thresh):
     """
@@ -22,7 +24,6 @@ def extract_detections(all_preds, obj_thresh):
         batch_detections = extract_detections_single_image(batch_preds, obj_thresh)
         all_detections.append(batch_detections)
 
-    # print(all_detections)
     return all_detections
 
 # correct_detections
@@ -105,9 +106,8 @@ def predictions_to_detections(preds):
 
     n_preds = len(preds)
 
-    # Half width and height for offsetting from center point
-    half_w = preds[..., YOLO_TW] / 2
-    half_h = preds[..., YOLO_TH] / 2
+    # Getting x1y1x2y2 bboxes from predictions
+    bboxes = predictions_to_bboxes(preds)
 
     # Get full class probs by multiplying class score with objectness
     # We need a num values dimension on the object scores (unsqueeze) to get pytorch to broadcast properly
@@ -120,10 +120,7 @@ def predictions_to_detections(preds):
 
     # Creating detections
     detections = torch.zeros((n_preds, detection_n_elems), dtype=preds.dtype, device=preds.device)
-    detections[..., DETECTION_X1] = preds[..., YOLO_TX] - half_w
-    detections[..., DETECTION_Y1] = preds[..., YOLO_TY] - half_h
-    detections[..., DETECTION_X2] = preds[..., YOLO_TX] + half_w
-    detections[..., DETECTION_Y2] = preds[..., YOLO_TY] + half_h
+    detections[..., DETECTION_X1:DETECTION_Y2+1] = bboxes
     detections[..., DETECTION_CLASS_START:] = class_probs
 
     return detections
