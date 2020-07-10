@@ -31,6 +31,54 @@ def predictions_to_bboxes(preds):
 
     return bboxes
 
+# compute_iou_masks
+def compute_iou_masks(in_boxes, target_boxes, thresholds):
+    """
+    ----------
+    Author: Damon Gwinn (gwinndr)
+    ----------
+    - Used for computing masks on in_boxes
+    - If an in_box has an iou with any target_boxes greater than threshold, has a True in its mask position
+    - thresholds should be a floats between 0 and 1 or list of said floats
+    - Returns a single mask, or a list of masks depending on if thresholds is a value or a list
+    ----------
+    """
+
+    device = in_boxes.device
+
+    # Dropping attribute dim
+    mask_shape = in_boxes.shape[:-1]
+
+    # Checking thresholds for value or list-like    
+    if(type(thresholds) in (list, tuple)):
+        single_thresh = False
+    else:
+        single_thresh = True
+        thresholds = (thresholds,)
+
+    # Filling masks with False values
+    masks = []
+    for i in range(len(thresholds)):
+        mask = torch.full(mask_shape, False, dtype=torch.bool, device=device)
+        masks.append(mask)
+
+    # Figuring out which predictions overlap an annotation by more than ignore_thresh
+    for target in target_boxes:
+        ious = bbox_iou_one_to_many(target, in_boxes)
+        # print(ious.shape)
+
+        for i, thresh in enumerate(thresholds):
+            mask = masks[i]
+
+            iou_thresh = ious > thresh
+            torch.logical_or(mask, iou_thresh, out=mask)
+
+    # Returning single mask if single threshold given
+    if(single_thresh):
+        masks = masks[0]
+
+    return masks
+
 # bbox_iou_one_to_many
 def bbox_iou_one_to_many(bbox_a, bboxes_b):
     """
