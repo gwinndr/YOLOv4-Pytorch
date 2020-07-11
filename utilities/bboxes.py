@@ -31,53 +31,30 @@ def predictions_to_bboxes(preds):
 
     return bboxes
 
-# compute_iou_masks
-def compute_iou_masks(in_boxes, target_boxes, thresholds):
+# bbox_iou_one_to_many
+def bbox_iou_many_to_many(boxes_a, boxes_b):
     """
     ----------
     Author: Damon Gwinn (gwinndr)
     ----------
-    - Used for computing masks on in_boxes
-    - If an in_box has an iou with any target_boxes greater than threshold, has a True in its mask position
-    - thresholds should be a floats between 0 and 1 or list of said floats
-    - Returns a single mask, or a list of masks depending on if thresholds is a value or a list
+    - Computes ious between all the boxes in a with all the boxes in b
+    - Returns iou tensor of shape (n,m)  where n and m are the number of boxes_a and boxes_b respectively
+    - For better performance, order such that the length of boxes_a is greater than the length of boxes_b
     ----------
     """
 
-    device = in_boxes.device
+    device = boxes_a.device
 
-    # Dropping attribute dim
-    mask_shape = in_boxes.shape[:-1]
+    n_boxes_a = len(boxes_a)
+    n_boxes_b = len(boxes_b)
 
-    # Checking thresholds for value or list-like    
-    if(type(thresholds) in (list, tuple)):
-        single_thresh = False
-    else:
-        single_thresh = True
-        thresholds = (thresholds,)
+    all_ious = torch.zeros((n_boxes_a, n_boxes_b), dtype=torch.float32, device=device)
 
-    # Filling masks with False values
-    masks = []
-    for i in range(len(thresholds)):
-        mask = torch.full(mask_shape, False, dtype=torch.bool, device=device)
-        masks.append(mask)
+    for i, box_b in enumerate(boxes_b):
+        ious = bbox_iou_one_to_many(box_b, boxes_a)
+        all_ious[..., i] = ious
 
-    # Figuring out which predictions overlap an annotation by more than ignore_thresh
-    for target in target_boxes:
-        ious = bbox_iou_one_to_many(target, in_boxes)
-        # print(ious.shape)
-
-        for i, thresh in enumerate(thresholds):
-            mask = masks[i]
-
-            iou_thresh = ious > thresh
-            torch.logical_or(mask, iou_thresh, out=mask)
-
-    # Returning single mask if single threshold given
-    if(single_thresh):
-        masks = masks[0]
-
-    return masks
+    return all_ious
 
 # bbox_iou_one_to_many
 def bbox_iou_one_to_many(bbox_a, bboxes_b):
