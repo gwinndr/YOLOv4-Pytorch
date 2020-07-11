@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 
 from utilities.constants import *
-from utilities.bboxes import bbox_iou_one_to_many, predictions_to_bboxes, bbox_iou
+from utilities.bboxes import bbox_iou_one_to_many, predictions_to_bboxes, bbox_iou, bbox_iou_many_to_many
 from utilities.detections import extract_detections_single_image
 
 # The big cheese
@@ -33,6 +33,7 @@ class YoloLayer(nn.Module):
         self.n_classes = n_classes
         self.ignore_thresh = ignore_thresh
         self.truth_thresh = truth_thresh
+        self.iou_thresh = iou_thresh
 
         self.scale_xy = scale_xy
 
@@ -88,10 +89,12 @@ class YoloLayer(nn.Module):
         anchors = torch.tensor(anchors, dtype=torch.float32, device=device)
 
         # Combining grid_dims into one vector
-        x = x.view(batch_num, n_anchors, attrs_per_anchor, grid_size)
+        # x = x.view(batch_num, n_anchors, attrs_per_anchor, grid_size)
+        x = x.view(batch_num, n_anchors, attrs_per_anchor, grid_dim, grid_dim)
 
         # (batch, grid_size, n_anchors, attrs_per_anchor)
-        x = x.permute(0,3,1,2).contiguous()
+        # x = x.permute(0,3,1,2).contiguous()
+        x = x.permute(0,3,4,1,2).contiguous()
 
         # Performs yolo transforms (sigmoid, anchor offset, etc.)
         self.yolo_transform(x, anchors)
@@ -118,7 +121,8 @@ class YoloLayer(nn.Module):
 
         batch_num = x.shape[INPUT_BATCH_DIM]
         attrs_per_anchor = self.n_classes + YOLO_N_BBOX_ATTRS
-        n_anchors = len(self.anchor_mask)
+        n_all_anchors = len(self.all_anchors)
+        n_masked_anchors = len(self.anchor_mask)
         grid_size = grid_dim * grid_dim
 
         all_anchors = [(anc[0] / grid_stride, anc[1] / grid_stride) for anc in self.all_anchors]
@@ -127,11 +131,11 @@ class YoloLayer(nn.Module):
         all_anchors = torch.tensor(all_anchors, dtype=torch.float32, device=device, requires_grad=False)
         mask_anchors = torch.tensor(mask_anchors, dtype=torch.float32, device=device, requires_grad=False)
 
-        # Combining grid_dims into one vector
-        x = x.view(batch_num, n_anchors, attrs_per_anchor, grid_size)
+        # Viewing yolo attributes
+        x = x.view(batch_num, n_masked_anchors, attrs_per_anchor, grid_dim, grid_dim)
 
-        # (batch, grid_size, n_anchors, attrs_per_anchor)
-        x = x.permute(0,3,1,2).contiguous()
+        # (batch, grid_dim, grid_dim, n_masked_anchors, attrs_per_anchor)
+        x = x.permute(0,3,4,1,2).contiguous()
 
         # Mapping annotations to grid
         anns = anns.clone()
@@ -139,79 +143,119 @@ class YoloLayer(nn.Module):
 
         for b, batch_x in enumerate(x):
             batch_anns = anns[b]
-
-            # Transforming a clone of x (no gradients)
-            x_transformed = batch_x.detach().clone()
-            self.yolo_transform(x_transformed, mask_anchors)
-            self.add_grid_offsets(x_transformed, grid_dim, n_anchors)
-
-            dets = extract_detections_single_image(x_transformed, OBJ_THRESH_DEFAULT)
-
-            # Bounding boxes for x predictions
-            x_boxes = predictions_to_bboxes(x_transformed)
-            # x_boxes = dets[..., DETECTION_X1:DETECTION_Y2+1]
-
-            # Annotations bounding boxes
+            n_anns = len(batch_anns)
             ann_boxes = batch_anns[..., ANN_BBOX_X1:ANN_BBOX_Y2+1]
+            ann_cls = batch_anns[..., ANN_BBOX_CLASS].type(torch.int32)
 
-            # First get ignore indices (prediction boxes that overlap the gt by a certain threshold)
-            ignore_mask = self.ignore_mask(x_boxes, ann_boxes, self.ignore_thresh)
+            # Following do not require gradients
+            with torch.no_grad():
+                # Getting a detached and flattened copy of txtytwth values for iou computations
+                x_ts = batch_x[..., YOLO_TX:YOLO_TH+1].detach().clone()
+                self.yolo_transform(x_ts, mask_anchors, objcls=False)
+                self.add_grid_offsets(x_ts, grid_dim, n_masked_anchors)
+                x_ts = x_ts.view(-1, x_ts.shape[-1])
 
-            # ignore_mask = ignore_mask.view(grid_dim, grid_dim, n_anchors)
-            # batch_x = batch_x.view(grid_dim, grid_dim, n_anchors, attrs_per_anchor)
+                # Bounding boxes for predictions
+                x_boxes = predictions_to_bboxes(x_ts)
+                x_boxes.view(grid_size*n_masked_anchors, BBOX_N_ELEMS)
 
-            from utilities.configs import parse_names
-            class_names = parse_names("./configs/coco.names")
+                # ious between predictions and annotations
+                x_ann_ious = bbox_iou_many_to_many(x_boxes, ann_boxes)
 
-            x_ign = x_transformed[ignore_mask]
-            print("=====")
-            print("IGNORE:")
-            print(x_ign.shape)
-            for ign in x_ign:
-                cls = ign[YOLO_CLASS_START:]
-                obj = ign[YOLO_OBJ]
-                i = torch.argmax(cls)
-                # print(i)
-                # print(cls.shape)
-                print(class_names[i], cls[i], obj)
-                # print(cls)
+                # Ignore mask, True if predictions overlap a ground truth by more than ignore threshold
+                ignore_mask = x_ann_ious > self.ignore_thresh
+                ignore_mask = ignore_mask.sum(dtype=torch.bool, dim=1)
+                ignore_mask = ignore_mask.view(grid_dim, grid_dim, n_masked_anchors)
+
+                # Now getting ious for anchor boxes and annotations
+                ann_boxes_topleft = ann_boxes.clone()
+                ann_boxes_topleft[..., ANN_BBOX_X1:ANN_BBOX_Y1+1] = 0.0
+
+                all_anchor_boxes = torch.zeros((n_all_anchors, BBOX_N_ELEMS), dtype=torch.float32, device=device)
+                all_anchor_boxes[..., BBOX_X2:BBOX_Y2+1] = all_anchors
+
+                ann_anc_ious = bbox_iou_many_to_many(ann_boxes_topleft, all_anchor_boxes)
+
+                # Responsible anchors, True if anchor overlaps corresponding ground truth (anns) by more than some threshold
+                resp_anc_mask = ann_anc_ious > self.iou_thresh
+
+                # Best anchors (highest iou for an annotation) are always responsible
+                best_ancs = torch.argmax(ann_anc_ious, dim=1)
+                ann_idxs = torch.arange(start=0, end=n_anns, step=1, device=device) # just to help index properly
+
+                resp_anc_mask[ann_idxs, best_ancs] = True
+
+                # Subset out anchors tied to this layer only
+                masked_idxs = torch.tensor(self.anchor_mask, dtype=ann_idxs.dtype, device=device)
+                resp_anc_mask = resp_anc_mask[..., masked_idxs]
+
+                print(resp_anc_mask)
+
+            # end torch.no_grad()
+
+            # from utilities.configs import parse_names
+            # class_names = parse_names("./configs/coco.names")
+            #
+            # # For testing
+            # x_testing = batch_x.detach().clone()
+            # self.yolo_transform(x_testing, mask_anchors)
+            # self.add_grid_offsets(x_testing, grid_dim, n_anchors)
+            # dets = extract_detections_single_image(x_testing, OBJ_THRESH_DEFAULT)
+            #
+            # x_ign = x_testing[ignore_mask]
             # print("=====")
-            print("")
-
-            print("DETECTIONS:")
-            print("anns:")
-            print(ann_boxes)
-            for det in dets:
-                i = torch.argmax(det[DETECTION_CLASS_START:])
-                print(class_names[i])
-                print(det[DETECTION_X1:DETECTION_Y2+1])
-
-                # print(bbox_iou_one_to_many(det[DETECTION_X1:DETECTION_Y2+1], ann_boxes))
-            print("")
+            # print("IGNORE:")
+            # print(x_ign.shape)
+            # for ign in x_ign:
+            #     cls = ign[YOLO_CLASS_START:]
+            #     obj = ign[YOLO_OBJ]
+            #     i = torch.argmax(cls)
+            #     # print(i)
+            #     # print(cls.shape)
+            #     print(class_names[i], cls[i], obj)
+            #     # print(cls)
+            # # print("=====")
+            # print("")
+            #
+            # print("DETECTIONS:")
+            # print("anns:")
+            # print(ann_boxes)
+            # for det in dets:
+            #     i = torch.argmax(det[DETECTION_CLASS_START:])
+            #     print(class_names[i])
+            #     print(det[DETECTION_X1:DETECTION_Y2+1])
+            #
+            #     # print(bbox_iou_one_to_many(det[DETECTION_X1:DETECTION_Y2+1], ann_boxes))
+            # print("")
 
         return None
 
 
     # yolo_transform
-    def yolo_transform(self, x, anchors):
+    def yolo_transform(self, x, anchors, objcls=True):
         """
         ----------
         Author: Damon Gwinn (gwinndr)
         ----------
         - Yolo postprocessing transformation
-        - Sigmoids tx and ty offset values
+        - Sigmoids tx and ty offset values and scales by scale_xy
         - Multiplies exp'd tw and th values by anchor boxes
+        - If objcls, also sigmoids objectness and class scores
         ----------
         """
 
-        # TX, TY, TW, and TH post-processing
+        # TX and TY post-processing
         x[..., YOLO_TX:YOLO_TY+1] = \
             torch.sigmoid(x[..., YOLO_TX:YOLO_TY+1]) * self.scale_xy - (self.scale_xy - 1) / 2
+
+        # TW and TY post-processing
         x[..., YOLO_TW:YOLO_TH+1] = \
             torch.exp(x[..., YOLO_TW:YOLO_TH+1]) * anchors
 
         # Sigmoid objectness and class scores
-        x[..., YOLO_OBJ:] = torch.sigmoid(x[..., YOLO_OBJ:])
+        if(objcls):
+            x[..., YOLO_OBJ] = torch.sigmoid(x[..., YOLO_OBJ])
+            x[..., YOLO_CLASS_START:] = torch.sigmoid(x[..., YOLO_CLASS_START:])
 
         return
 
@@ -222,6 +266,7 @@ class YoloLayer(nn.Module):
         Author: Damon Gwinn (gwinndr)
         ----------
         - Adds grid position offsets to each tx and ty value
+        - Expect x to be tensor of shape (..., grid_dim, grid_dim, n_anchors, yolo_attrs)
         ----------
         """
 
@@ -231,42 +276,15 @@ class YoloLayer(nn.Module):
         grid = torch.arange(start=0, end=grid_dim, step=1, device=device)
         y_offset, x_offset = torch.meshgrid(grid,grid)
 
-        x_offset = x_offset.flatten()
-        y_offset = y_offset.flatten()
-
-        # The permute is to help pytorch broadcast offsets to each grid cell properly
-        # It just works, it's magic, I don't know, welcome to hell
-        x_offset = x_offset.expand(n_anchors, -1).permute(1,0)
-        y_offset = y_offset.expand(n_anchors, -1).permute(1,0)
+        # Expanding offsets to be of the shape (grid_dim, grid_dim, n_anchors)
+        x_offset = x_offset.expand(n_anchors, grid_dim, grid_dim).permute(1,2,0)
+        y_offset = y_offset.expand(n_anchors, grid_dim, grid_dim).permute(1,2,0)
 
         # Adding grid offsets to TX and TY
         x[..., YOLO_TX] += x_offset
         x[..., YOLO_TY] += y_offset
 
         return
-
-    # ignore_mask
-    def ignore_mask(self, x_boxes, ann_boxes, ignore_thresh):
-        # Don't need gradients for ignore indices
-        with torch.no_grad():
-            device = x_boxes.device
-
-            # Dropping attribute dim
-            ignore_shape = x_boxes.shape[:-1]
-
-            # Filling mask with False values
-            ignore_mask = torch.full(ignore_shape, False, dtype=torch.bool, device=device, requires_grad=False)
-
-            # Figuring out which predictions overlap an annotation by more than ignore_thresh
-            for ann_box in ann_boxes:
-                ious = bbox_iou_one_to_many(ann_box, x_boxes)
-                # print(ious.shape)
-                ann_ignore = ious > ignore_thresh
-
-                torch.logical_or(ignore_mask, ann_ignore, out=ignore_mask)
-
-        return ignore_mask
-
 
     # to_string
     def to_string(self):
