@@ -60,15 +60,17 @@ COCO_80_TO_91 = ( 1,2,3,4,5,6,7,8,9,10,11,13,14,15,16,17,18,19,20,21,22,23,24,25
 GREEDY_NMS = "greedynms"
 
 # Supported Bbox loss
-MSE = "mse"
-CIOU = "ciou"
+BBOX_MSE_LOSS = "mse"
+BBOX_CIOU_LOSS = "ciou"
 
 ##### CONVOLUTIONAL DEFAULT CONSTANTS #####
+# Layer init defaults
 CONV_BN = False
 CONV_PAD = False
 CONV_ACTIV = "linear"
 
 ##### SHORTCUT CONSTANTS #####
+# Layer init defaults
 SHCT_ACTIV = "linear"
 
 ##### MAXPOOL CONSTANTS #####
@@ -82,7 +84,7 @@ YOLO_SCALEXY = 1
 YOLO_IOU_THRESH = 0.25
 YOLO_CLS_NORM = 1
 YOLO_IOU_NORM = 1
-YOLO_IOU_LOSS = MSE
+YOLO_IOU_LOSS = BBOX_MSE_LOSS
 YOLO_NMS_KIND = GREEDY_NMS
 YOLO_BETA_NMS = 0.6
 YOLO_MAX_DELTA = 5

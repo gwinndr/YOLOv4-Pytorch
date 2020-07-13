@@ -1,6 +1,8 @@
 import torch
 import torch.nn as nn
 
+from model.loss.bbox_loss import compute_bbox_loss
+
 from utilities.constants import *
 from utilities.bboxes import bbox_iou_one_to_many, predictions_to_bboxes, bbox_iou, bbox_iou_many_to_many, bbox_ciou
 from utilities.detections import extract_detections_single_image
@@ -33,7 +35,9 @@ class YoloLayer(nn.Module):
         self.n_classes = n_classes
         self.ignore_thresh = ignore_thresh
         self.truth_thresh = truth_thresh
+
         self.iou_thresh = iou_thresh
+        self.iou_loss = iou_loss
 
         self.scale_xy = scale_xy
 
@@ -141,9 +145,9 @@ class YoloLayer(nn.Module):
         anns = anns.clone()
         anns[..., ANN_BBOX_X1:ANN_BBOX_Y2+1] /= grid_stride
 
-        bbox_loss = 0.0
-        obj_loss = 0.0
-        cls_loss = 0.0
+        tot_bbox_loss = 0.0
+        tot_obj_loss = 0.0
+        tot_cls_loss = 0.0
 
         for b, batch_x in enumerate(x):
             batch_anns = anns[b]
@@ -202,17 +206,87 @@ class YoloLayer(nn.Module):
                 resp_anns_cx = resp_anns[..., ANN_BBOX_X1] + resp_anns_w / 2.0
                 resp_anns_cy = resp_anns[..., ANN_BBOX_Y1] + resp_anns_h / 2.0
 
-                pred_h_idxs = resp_anns_cy.type(torch.long)
-                pred_w_idxs = resp_anns_cx.type(torch.long)
+                resp_pred_h = resp_anns_cy.type(torch.long)
+                resp_pred_w = resp_anns_cx.type(torch.long)
 
                 # Anchor box idxs for responsible predictions
                 pred_a_idxs = torch.arange(start=0, end=n_masked_anchors, step=1, device=device)
                 pred_a_idxs = pred_a_idxs.expand(n_anns, n_masked_anchors)
                 resp_pred_a = pred_a_idxs[resp_anc_mask]
 
+                # Responsible predictions are ignored since they have a separate loss calculation
+                ignore_mask[resp_pred_h, resp_pred_w, resp_pred_a] = True
+
             # end torch.no_grad()
 
+            # Loss objects
+            mse = nn.MSELoss(reduction = "mean")
+            sse = nn.MSELoss(reduction = "sum")
 
+            # Transforming responsible predictions
+            resp_preds = batch_x[resp_pred_h, resp_pred_w, resp_pred_a]
+            resp_ancs = mask_anchors[resp_pred_a]
+            self.yolo_transform(resp_preds, resp_ancs)
+
+            n_resp = len(resp_preds)
+
+            # Setting up targets
+            target_zeros = torch.zeros(resp_preds.shape[:-1], dtype=torch.float32, device=device, requires_grad=False)
+            target_ones = target_zeros + 1.0
+
+            # Responsible bbox loss
+            resp_pred_boxes = predictions_to_bboxes(resp_preds)
+            resp_anns_boxes = resp_anns[..., ANN_BBOX_X1:ANN_BBOX_Y2+1]
+            bbox_cious = bbox_ciou(resp_pred_boxes, resp_anns_boxes)
+            bbox_loss = mse(bbox_cious, target_ones)
+
+            # Responsible objectness loss
+            pred_obj = resp_preds[..., YOLO_OBJ]
+            resp_obj_loss = mse(pred_obj, target_ones)
+
+            # Responsible class loss
+            pred_cls = resp_preds[..., YOLO_CLASS_START:]
+            resp_anns_cls = resp_anns[..., ANN_BBOX_CLASS].type(torch.long)
+
+            target_cls = torch.zeros(pred_cls.shape, dtype=torch.float32, device=device, requires_grad=False)
+            resp_idxs = torch.arange(start=0, end=n_resp, step=1, device=device) # just to help index properly
+            target_cls[resp_idxs, resp_anns_cls] = 1.0
+
+            # MSE relative to the number of responsible preds
+            cls_loss = sse(pred_cls, target_cls) #/ n_resp
+
+            # Non-responsible object loss (without ignored preds)
+            non_resp_objs = batch_x[~ignore_mask][..., YOLO_OBJ]
+            non_resp_objs = torch.sigmoid(non_resp_objs)
+            target_zeros = torch.zeros(non_resp_objs.shape, dtype=torch.float32, device=device)
+
+            non_resp_obj_loss = sse(non_resp_objs, target_zeros)
+
+            # Fixing NaNs
+            loss_zero = torch.zeros((1,), dtype=torch.float32, device=device, requires_grad=True)
+            if(torch.isnan(bbox_loss)):
+                bbox_loss = loss_zero
+            if(torch.isnan(resp_obj_loss)):
+                resp_obj_loss = loss_zero
+            if(torch.isnan(cls_loss)):
+                cls_loss = loss_zero
+            if(torch.isnan(non_resp_obj_loss)):
+                non_resp_obj_loss = loss_zero
+
+            # Full objectness loss
+            obj_loss = resp_obj_loss + non_resp_obj_loss
+
+            tot_bbox_loss += bbox_loss
+            tot_obj_loss += obj_loss
+            tot_cls_loss += cls_loss
+
+        tot_bbox_loss /= batch_num
+        tot_obj_loss /= batch_num
+        tot_cls_loss /= batch_num
+
+        print("bbox_loss: %.2f" % tot_bbox_loss.item())
+        print("obj_loss: %.2f" % tot_obj_loss.item())
+        print("cls_loss: %.2f" % tot_cls_loss.item())
 
         return None
 
