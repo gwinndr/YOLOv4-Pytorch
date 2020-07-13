@@ -1,4 +1,5 @@
 import torch
+import math
 
 from utilities.constants import *
 
@@ -72,6 +73,67 @@ def bbox_iou_one_to_many(bbox_a, bboxes_b):
 
     return ious
 
+# bbox_ciou
+# Modified from https://github.com/Zzh-tju/DIoU-darknet/blob/master/src/box.c (box_ciou)
+def bbox_ciou(bboxes_a, bboxes_b):
+    """
+    ----------
+    Author: Zzh-tju
+    Modified: Damon Gwinn (gwinndr)
+    ----------
+    - Computes CIOU elementwise between the bboxes in a and the bboxes in b
+    - Modified from https://github.com/Zzh-tju/DIoU-darknet/blob/master/src/box.c (box_ciou)
+    - https://arxiv.org/abs/1911.08287
+    ----------
+    """
+
+    device = bboxes_a.device
+
+    shape = bboxes_a.shape[:-1]
+    cious = torch.zeros(shape, dtype=torch.float32, device=device)
+
+    ious = bbox_iou(bboxes_a, bboxes_b)
+    union = bbox_union_box(bboxes_a, bboxes_b)
+
+    union_w = union[..., BBOX_X2] - union[..., BBOX_X1]
+    union_h = union[..., BBOX_Y2] - union[..., BBOX_Y1]
+
+    c = (union_w * union_w) + (union_h * union_h)
+
+    a = bboxes_a
+    b = bboxes_b
+
+    a_w = a[..., BBOX_X2] - a[..., BBOX_X1]
+    a_h = a[..., BBOX_Y2] - a[..., BBOX_Y1]
+    b_w = b[..., BBOX_X2] - b[..., BBOX_X1]
+    b_h = b[..., BBOX_Y2] - b[..., BBOX_Y1]
+
+    a_cx = a[..., BBOX_X1] + a_w / 2.0
+    a_cy = a[..., BBOX_Y1] + a_h / 2.0
+    b_cx = b[..., BBOX_X1] + b_w / 2.0
+    b_cy = b[..., BBOX_Y1] + b_h / 2.0
+
+    u = (a_cx - b_cx) * (a_cx - b_cx) + (a_cy - b_cy) * (a_cy - b_cy)
+    d = u / c
+
+    ar_b = b_w / b_h;
+    ar_a = a_w / a_h;
+
+    ar_term = 4.0 / (math.pi * math.pi) * (torch.atan(ar_b) - torch.atan(ar_a)) * (torch.atan(ar_b) - torch.atan(ar_a));
+    alpha = ar_term / (1.0 - ious + ar_term + 0.000001);
+
+    ciou_term = d + alpha * ar_term;
+
+    cious = ious - ciou_term
+
+    # If ciou is nan, set to iou
+    nan_mask = torch.isnan(cious)
+    cious[nan_mask] = ious[nan_mask]
+
+    # print("  c: %f, u: %f, riou_term: %f\n" % (c, u, ciou_term))
+
+    return cious
+
 # bbox_iou
 # Modified from https://gist.github.com/meyerjo/dd3533edc97c81258898f60d8978eddc
 def bbox_iou(bboxes_a, bboxes_b):
@@ -104,5 +166,42 @@ def bbox_iou(bboxes_a, bboxes_b):
     # areas - the interesection area
     iou = interArea / (bboxes_aArea + bboxes_bArea - interArea)
 
+    # If iou is not a number, we'll assume it's 0
+    nan_mask = torch.isnan(iou)
+    iou[nan_mask] = 0.0
+
     # return the intersection over union value
     return iou
+
+# bbox_union_box
+def bbox_union_box(bboxes_a, bboxes_b):
+    """
+    ----------
+    Author: Damon Gwinn (gwinndr)
+    ----------
+    - Computes the union bbox elementwise between the bboxes in a and the bboxes in b
+    - Union bbox is the smallest box that encompasses both a and b
+    ----------
+    """
+
+    device = bboxes_a.device
+
+    shape = (*bboxes_a.shape[:-1], BBOX_N_ELEMS)
+    union = torch.zeros(shape, dtype=torch.float32, device=device)
+
+    a_x1 = bboxes_a[..., BBOX_X1]
+    a_y1 = bboxes_a[..., BBOX_Y1]
+    a_x2 = bboxes_a[..., BBOX_X2]
+    a_y2 = bboxes_a[..., BBOX_Y2]
+
+    b_x1 = bboxes_b[..., BBOX_X1]
+    b_y1 = bboxes_b[..., BBOX_Y1]
+    b_x2 = bboxes_b[..., BBOX_X2]
+    b_y2 = bboxes_b[..., BBOX_Y2]
+
+    union[..., BBOX_X1] = torch.min(a_x1, b_x1)
+    union[..., BBOX_Y1] = torch.min(a_y1, b_y1)
+    union[..., BBOX_X2] = torch.max(a_x2, b_x2)
+    union[..., BBOX_Y2] = torch.max(a_y2, b_y2)
+
+    return union

@@ -125,6 +125,10 @@ COCO_ANN_BBOX_H = 3
 # Other
 YOLO_N_BBOX_ATTRS = 5 # x,y,w,h,obj
 
+# Supported IOU types
+IOU = "iou"
+CIOU = "ciou"
+
 ##### CONFIGURATION FILE CONSTANTS #####
 DARKNET_CONFIG_BLOCK_TYPE = "DARKNET_CONFIG_BLOCK_TYPE"
 
