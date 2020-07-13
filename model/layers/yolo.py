@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 
 from utilities.constants import *
-from utilities.bboxes import bbox_iou_one_to_many, predictions_to_bboxes, bbox_iou, bbox_iou_many_to_many
+from utilities.bboxes import bbox_iou_one_to_many, predictions_to_bboxes, bbox_iou, bbox_iou_many_to_many, bbox_ciou
 from utilities.detections import extract_detections_single_image
 
 # The big cheese
@@ -141,6 +141,10 @@ class YoloLayer(nn.Module):
         anns = anns.clone()
         anns[..., ANN_BBOX_X1:ANN_BBOX_Y2+1] /= grid_stride
 
+        bbox_loss = 0.0
+        obj_loss = 0.0
+        cls_loss = 0.0
+
         for b, batch_x in enumerate(x):
             batch_anns = anns[b]
             n_anns = len(batch_anns)
@@ -159,15 +163,13 @@ class YoloLayer(nn.Module):
                 x_boxes = predictions_to_bboxes(x_ts)
                 x_boxes.view(grid_size*n_masked_anchors, BBOX_N_ELEMS)
 
-                # ious between predictions and annotations
-                x_ann_ious = bbox_iou_many_to_many(x_boxes, ann_boxes)
-
                 # Ignore mask, True if predictions overlap a ground truth by more than ignore threshold
+                x_ann_ious = bbox_iou_many_to_many(x_boxes, ann_boxes)
                 ignore_mask = x_ann_ious > self.ignore_thresh
                 ignore_mask = ignore_mask.sum(dtype=torch.bool, dim=1)
                 ignore_mask = ignore_mask.view(grid_dim, grid_dim, n_masked_anchors)
 
-                # Now getting ious for anchor boxes and annotations
+                # IOUs between anchor boxes and annotations to determine responsible predictions
                 ann_boxes_topleft = ann_boxes.clone()
                 ann_boxes_topleft[..., ANN_BBOX_X1:ANN_BBOX_Y1+1] = 0.0
 
@@ -186,47 +188,31 @@ class YoloLayer(nn.Module):
                 resp_anc_mask[ann_idxs, best_ancs] = True
 
                 # Subset out anchors tied to this layer only
-                masked_idxs = torch.tensor(self.anchor_mask, dtype=ann_idxs.dtype, device=device)
+                masked_idxs = torch.tensor(self.anchor_mask, dtype=torch.long, device=device)
                 resp_anc_mask = resp_anc_mask[..., masked_idxs]
 
-                print(resp_anc_mask)
+                # Corresponding annotations for each responsible prediction
+                #(n_anns, n_masked_anchors, n_bbox_elems)
+                anns_per_anchor = batch_anns.expand((n_masked_anchors, n_anns, ANN_BBOX_N_ELEMS)).permute(1,0,2)
+                resp_anns = anns_per_anchor[resp_anc_mask]
+
+                # Grid coordinates for each responsible prediction (floor of the bbox center)
+                resp_anns_w = resp_anns[..., ANN_BBOX_X2] - resp_anns[..., ANN_BBOX_X1]
+                resp_anns_h = resp_anns[..., ANN_BBOX_Y2] - resp_anns[..., ANN_BBOX_Y1]
+                resp_anns_cx = resp_anns[..., ANN_BBOX_X1] + resp_anns_w / 2.0
+                resp_anns_cy = resp_anns[..., ANN_BBOX_Y1] + resp_anns_h / 2.0
+
+                pred_h_idxs = resp_anns_cy.type(torch.long)
+                pred_w_idxs = resp_anns_cx.type(torch.long)
+
+                # Anchor box idxs for responsible predictions
+                pred_a_idxs = torch.arange(start=0, end=n_masked_anchors, step=1, device=device)
+                pred_a_idxs = pred_a_idxs.expand(n_anns, n_masked_anchors)
+                resp_pred_a = pred_a_idxs[resp_anc_mask]
 
             # end torch.no_grad()
 
-            # from utilities.configs import parse_names
-            # class_names = parse_names("./configs/coco.names")
-            #
-            # # For testing
-            # x_testing = batch_x.detach().clone()
-            # self.yolo_transform(x_testing, mask_anchors)
-            # self.add_grid_offsets(x_testing, grid_dim, n_anchors)
-            # dets = extract_detections_single_image(x_testing, OBJ_THRESH_DEFAULT)
-            #
-            # x_ign = x_testing[ignore_mask]
-            # print("=====")
-            # print("IGNORE:")
-            # print(x_ign.shape)
-            # for ign in x_ign:
-            #     cls = ign[YOLO_CLASS_START:]
-            #     obj = ign[YOLO_OBJ]
-            #     i = torch.argmax(cls)
-            #     # print(i)
-            #     # print(cls.shape)
-            #     print(class_names[i], cls[i], obj)
-            #     # print(cls)
-            # # print("=====")
-            # print("")
-            #
-            # print("DETECTIONS:")
-            # print("anns:")
-            # print(ann_boxes)
-            # for det in dets:
-            #     i = torch.argmax(det[DETECTION_CLASS_START:])
-            #     print(class_names[i])
-            #     print(det[DETECTION_X1:DETECTION_Y2+1])
-            #
-            #     # print(bbox_iou_one_to_many(det[DETECTION_X1:DETECTION_Y2+1], ann_boxes))
-            # print("")
+
 
         return None
 
