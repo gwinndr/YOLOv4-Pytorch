@@ -1,8 +1,6 @@
 import torch
 import torch.nn as nn
 
-from model.loss.bbox_loss import compute_bbox_loss
-
 from utilities.constants import *
 from utilities.bboxes import bbox_iou_one_to_many, predictions_to_bboxes, bbox_iou, bbox_iou_many_to_many, bbox_ciou
 from utilities.detections import extract_detections_single_image
