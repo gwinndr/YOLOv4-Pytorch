@@ -36,6 +36,7 @@ class YoloLayer(nn.Module):
 
         self.iou_thresh = iou_thresh
         self.iou_loss = iou_loss
+        self.iou_norm = iou_norm
 
         self.scale_xy = scale_xy
 
@@ -141,11 +142,12 @@ class YoloLayer(nn.Module):
 
         # Mapping annotations to grid
         anns = anns.clone()
-        anns[..., ANN_BBOX_X1:ANN_BBOX_Y2+1] /= grid_stride
+        anns[..., ANN_BBOX_X1:ANN_BBOX_Y2+1] *= grid_dim
 
         tot_bbox_loss = 0.0
         tot_obj_loss = 0.0
         tot_cls_loss = 0.0
+        avg_obj = 0.0
 
         for b, batch_x in enumerate(x):
             batch_anns = anns[b]
@@ -173,10 +175,16 @@ class YoloLayer(nn.Module):
 
                 # IOUs between anchor boxes and annotations to determine responsible predictions
                 ann_boxes_topleft = ann_boxes.clone()
-                ann_boxes_topleft[..., ANN_BBOX_X1:ANN_BBOX_Y1+1] = 0.0
+                ann_boxes_topleft[..., ANN_BBOX_X2] -= ann_boxes_topleft[..., ANN_BBOX_X1]
+                ann_boxes_topleft[..., ANN_BBOX_Y2] -= ann_boxes_topleft[..., ANN_BBOX_Y1]
+                ann_boxes_topleft[..., ANN_BBOX_X1] = 0.0
+                ann_boxes_topleft[..., ANN_BBOX_Y1] = 0.0
 
                 all_anchor_boxes = torch.zeros((n_all_anchors, BBOX_N_ELEMS), dtype=torch.float32, device=device)
                 all_anchor_boxes[..., BBOX_X2:BBOX_Y2+1] = all_anchors
+
+                ann_boxes_topleft /= grid_dim
+                all_anchor_boxes /= grid_dim
 
                 ann_anc_ious = bbox_iou_many_to_many(ann_boxes_topleft, all_anchor_boxes)
 
@@ -186,8 +194,14 @@ class YoloLayer(nn.Module):
                 # Best anchors (highest iou for an annotation) are always responsible
                 best_ancs = torch.argmax(ann_anc_ious, dim=1)
                 ann_idxs = torch.arange(start=0, end=n_anns, step=1, device=device) # just to help index properly
+                best_ious = ann_anc_ious[ann_idxs, best_ancs]
 
                 resp_anc_mask[ann_idxs, best_ancs] = True
+
+                # for i in range(len(best_ious)):
+                #     print("best iou: %.4f" % best_ious[i].item())
+                #     print("best n:", best_ancs[i].item())
+                # print("")
 
                 # Subset out anchors tied to this layer only
                 masked_idxs = torch.tensor(self.anchor_mask, dtype=torch.long, device=device)
@@ -225,6 +239,8 @@ class YoloLayer(nn.Module):
             resp_preds = batch_x[resp_pred_h, resp_pred_w, resp_pred_a]
             resp_ancs = mask_anchors[resp_pred_a]
             self.yolo_transform(resp_preds, resp_ancs)
+            resp_preds[..., YOLO_TX] += resp_pred_w
+            resp_preds[..., YOLO_TY] += resp_pred_h
 
             n_resp = len(resp_preds)
 
@@ -236,11 +252,16 @@ class YoloLayer(nn.Module):
             resp_pred_boxes = predictions_to_bboxes(resp_preds)
             resp_anns_boxes = resp_anns[..., ANN_BBOX_X1:ANN_BBOX_Y2+1]
             bbox_cious = bbox_ciou(resp_pred_boxes, resp_anns_boxes)
-            bbox_loss = mse(bbox_cious, target_ones)
+            print(bbox_cious)
+            # bbox_loss = mse(bbox_cious, target_ones)
+            # bbox_loss = sse(bbox_cious, target_ones)
+            bbox_loss = (1.0 - bbox_cious).sum()
 
             # Responsible objectness loss
             pred_obj = resp_preds[..., YOLO_OBJ]
-            resp_obj_loss = mse(pred_obj, target_ones)
+            # resp_obj_loss = mse(pred_obj, target_ones)
+            resp_obj_loss = (1.0 - pred_obj).sum()
+            avg_obj += pred_obj.sum()
 
             # Responsible class loss
             pred_cls = resp_preds[..., YOLO_CLASS_START:]
@@ -251,14 +272,16 @@ class YoloLayer(nn.Module):
             target_cls[resp_idxs, resp_anns_cls] = 1.0
 
             # MSE relative to the number of responsible preds
-            cls_loss = sse(pred_cls, target_cls) #/ n_resp
+            # cls_loss = sse(pred_cls, target_cls) #/ n_resp
+            cls_loss = (target_cls - pred_cls).sum()
 
             # Non-responsible object loss (without ignored preds)
             non_resp_objs = batch_x[~ignore_mask][..., YOLO_OBJ]
             non_resp_objs = torch.sigmoid(non_resp_objs)
             target_zeros = torch.zeros(non_resp_objs.shape, dtype=torch.float32, device=device)
 
-            non_resp_obj_loss = sse(non_resp_objs, target_zeros)
+            # non_resp_obj_loss = sse(non_resp_objs, target_zeros)
+            non_resp_obj_loss = non_resp_objs.sum()
 
             # Fixing NaNs
             loss_zero = torch.zeros((1,), dtype=torch.float32, device=device, requires_grad=True)
@@ -278,15 +301,23 @@ class YoloLayer(nn.Module):
             tot_obj_loss += obj_loss
             tot_cls_loss += cls_loss
 
-        tot_bbox_loss /= batch_num
-        tot_obj_loss /= batch_num
-        tot_cls_loss /= batch_num
+        avg_bbox_loss = tot_bbox_loss / batch_num
+        avg_obj_loss = tot_obj_loss / batch_num
+        avg_cls_loss = tot_cls_loss / batch_num
 
-        print("bbox_loss: %.2f" % tot_bbox_loss.item())
-        print("obj_loss: %.2f" % tot_obj_loss.item())
-        print("cls_loss: %.2f" % tot_cls_loss.item())
+        total_loss = avg_bbox_loss + avg_obj_loss + avg_cls_loss
 
-        return None
+        n_resp = 1 if n_resp == 0 else n_resp
+
+        print("bbox_loss: %.4f" % avg_bbox_loss.item())
+        print("obj_loss: %.4f" % avg_obj_loss.item())
+        print("avg_1_obj: %.4f" % (avg_obj.item() / n_resp))
+        print("cls_loss: %.4f" % avg_cls_loss.item())
+        print("total_loss: %.4f" % total_loss)
+        print("resp_anns: %d" % len(resp_anns))
+        print("")
+
+        return total_loss
 
 
     # yolo_transform
