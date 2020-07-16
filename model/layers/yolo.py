@@ -124,19 +124,18 @@ class YoloLayer(nn.Module):
 
         batch_num = x.shape[INPUT_BATCH_DIM]
         attrs_per_anchor = self.n_classes + YOLO_N_BBOX_ATTRS
-        n_all_anchors = len(self.all_anchors)
-        n_masked_anchors = len(self.anchor_mask)
-        grid_size = grid_dim * grid_dim
+        n_pred_anchors = len(self.anchor_mask)
 
         all_anchors = [(anc[0] / grid_stride, anc[1] / grid_stride) for anc in self.all_anchors]
-        mask_anchors = [all_anchors[i] for i in self.anchor_mask]
+        pred_anchors = [all_anchors[i] for i in self.anchor_mask]
 
         all_anchors = torch.tensor(all_anchors, dtype=torch.float32, device=device, requires_grad=False)
-        mask_anchors = torch.tensor(mask_anchors, dtype=torch.float32, device=device, requires_grad=False)
+        pred_anchors = torch.tensor(pred_anchors, dtype=torch.float32, device=device, requires_grad=False)
 
         # Viewing yolo attributes
-        x = x.view(batch_num, n_masked_anchors, attrs_per_anchor, grid_dim, grid_dim)
+        x = x.view(batch_num, n_pred_anchors, attrs_per_anchor, grid_dim, grid_dim)
 
+        # Moving grid dimensions to the front of the tensor after batch_num
         # (batch, grid_dim, grid_dim, n_masked_anchors, attrs_per_anchor)
         x = x.permute(0,3,4,1,2).contiguous()
 
@@ -157,76 +156,20 @@ class YoloLayer(nn.Module):
 
             # Following do not require gradients
             with torch.no_grad():
-                # Getting a detached and flattened copy of txtytwth values for iou computations
-                x_ts = batch_x[..., YOLO_TX:YOLO_TH+1].detach().clone()
-                self.yolo_transform(x_ts, mask_anchors, objcls=False)
-                self.add_grid_offsets(x_ts, grid_dim, n_masked_anchors)
-                x_ts = x_ts.view(-1, x_ts.shape[-1])
 
-                # Bounding boxes for predictions
-                x_boxes = predictions_to_bboxes(x_ts)
-                x_boxes.view(grid_size*n_masked_anchors, BBOX_N_ELEMS)
+                # Indexes for responsible anchors (h,w,a) and their corresponding targets
+                resp_pred_idxs, resp_anns = self.responsible_predictions(all_anchors, batch_anns)
+                resp_pred_h, resp_pred_w, resp_pred_a = resp_pred_idxs
+
+                # ious between predictions and annotations for masks
+                x_ann_ious = self.iou_preds_anns(batch_x, batch_anns, grid_dim, pred_anchors)
 
                 # Ignore mask, True if predictions overlap a ground truth by more than ignore threshold
-                x_ann_ious = bbox_iou_many_to_many(x_boxes, ann_boxes)
                 ignore_mask = x_ann_ious > self.ignore_thresh
-                ignore_mask = ignore_mask.sum(dtype=torch.bool, dim=1)
-                ignore_mask = ignore_mask.view(grid_dim, grid_dim, n_masked_anchors)
+                ignore_mask = ignore_mask.sum(dtype=torch.bool, dim=1) # logical_or along annotation dim
+                ignore_mask = ignore_mask.view(grid_dim, grid_dim, n_pred_anchors)
 
-                # IOUs between anchor boxes and annotations to determine responsible predictions
-                ann_boxes_topleft = ann_boxes.clone()
-                ann_boxes_topleft[..., ANN_BBOX_X2] -= ann_boxes_topleft[..., ANN_BBOX_X1]
-                ann_boxes_topleft[..., ANN_BBOX_Y2] -= ann_boxes_topleft[..., ANN_BBOX_Y1]
-                ann_boxes_topleft[..., ANN_BBOX_X1] = 0.0
-                ann_boxes_topleft[..., ANN_BBOX_Y1] = 0.0
-
-                all_anchor_boxes = torch.zeros((n_all_anchors, BBOX_N_ELEMS), dtype=torch.float32, device=device)
-                all_anchor_boxes[..., BBOX_X2:BBOX_Y2+1] = all_anchors
-
-                ann_boxes_topleft /= grid_dim
-                all_anchor_boxes /= grid_dim
-
-                ann_anc_ious = bbox_iou_many_to_many(ann_boxes_topleft, all_anchor_boxes)
-
-                # Responsible anchors, True if anchor overlaps corresponding ground truth (anns) by more than some threshold
-                resp_anc_mask = ann_anc_ious > self.iou_thresh
-
-                # Best anchors (highest iou for an annotation) are always responsible
-                best_ancs = torch.argmax(ann_anc_ious, dim=1)
-                ann_idxs = torch.arange(start=0, end=n_anns, step=1, device=device) # just to help index properly
-                best_ious = ann_anc_ious[ann_idxs, best_ancs]
-
-                resp_anc_mask[ann_idxs, best_ancs] = True
-
-                # for i in range(len(best_ious)):
-                #     print("best iou: %.4f" % best_ious[i].item())
-                #     print("best n:", best_ancs[i].item())
-                # print("")
-
-                # Subset out anchors tied to this layer only
-                masked_idxs = torch.tensor(self.anchor_mask, dtype=torch.long, device=device)
-                resp_anc_mask = resp_anc_mask[..., masked_idxs]
-
-                # Corresponding annotations for each responsible prediction
-                #(n_anns, n_masked_anchors, n_bbox_elems)
-                anns_per_anchor = batch_anns.expand((n_masked_anchors, n_anns, ANN_BBOX_N_ELEMS)).permute(1,0,2)
-                resp_anns = anns_per_anchor[resp_anc_mask]
-
-                # Grid coordinates for each responsible prediction (floor of the bbox center)
-                resp_anns_w = resp_anns[..., ANN_BBOX_X2] - resp_anns[..., ANN_BBOX_X1]
-                resp_anns_h = resp_anns[..., ANN_BBOX_Y2] - resp_anns[..., ANN_BBOX_Y1]
-                resp_anns_cx = resp_anns[..., ANN_BBOX_X1] + resp_anns_w / 2.0
-                resp_anns_cy = resp_anns[..., ANN_BBOX_Y1] + resp_anns_h / 2.0
-
-                resp_pred_h = resp_anns_cy.type(torch.long)
-                resp_pred_w = resp_anns_cx.type(torch.long)
-
-                # Anchor box idxs for responsible predictions
-                pred_a_idxs = torch.arange(start=0, end=n_masked_anchors, step=1, device=device)
-                pred_a_idxs = pred_a_idxs.expand(n_anns, n_masked_anchors)
-                resp_pred_a = pred_a_idxs[resp_anc_mask]
-
-                # Responsible predictions are ignored since they have a separate loss calculation
+                # Responsible predictions are always ignored since they have a separate loss calculation
                 ignore_mask[resp_pred_h, resp_pred_w, resp_pred_a] = True
 
             # end torch.no_grad()
@@ -237,7 +180,7 @@ class YoloLayer(nn.Module):
 
             # Transforming responsible predictions
             resp_preds = batch_x[resp_pred_h, resp_pred_w, resp_pred_a]
-            resp_ancs = mask_anchors[resp_pred_a]
+            resp_ancs = pred_anchors[resp_pred_a]
             self.yolo_transform(resp_preds, resp_ancs)
             resp_preds[..., YOLO_TX] += resp_pred_w
             resp_preds[..., YOLO_TY] += resp_pred_h
@@ -252,7 +195,6 @@ class YoloLayer(nn.Module):
             resp_pred_boxes = predictions_to_bboxes(resp_preds)
             resp_anns_boxes = resp_anns[..., ANN_BBOX_X1:ANN_BBOX_Y2+1]
             bbox_cious = bbox_ciou(resp_pred_boxes, resp_anns_boxes)
-            print(bbox_cious)
             # bbox_loss = mse(bbox_cious, target_ones)
             # bbox_loss = sse(bbox_cious, target_ones)
             bbox_loss = (1.0 - bbox_cious).sum()
@@ -374,6 +316,107 @@ class YoloLayer(nn.Module):
         x[..., YOLO_TY] += y_offset
 
         return
+
+    # responsible_predictions
+    def responsible_predictions(self, all_anchors, anns):
+        """
+        ----------
+        Author: Damon Gwinn (gwinndr)
+        ----------
+        - Computes indexes and corresponding annotations for responsible predictions
+        - Responsible predictions:
+            - Predictions whose grid cell is centered on an annotation and whose anchor prior is responsible
+            - Responsible anchor priors overlap an annotation more than any other anchor prior
+            - If any anchor prior overlaps an annotation by more than iou_thresh, it is considered responsible
+            - Annotations have at minimum one responsible prediction across all yolo layers
+            - There may not be any responsible predictions on this yolo layer since all anchor priors are considered
+        - Returns responsible prediction indices (grid_h, grid_w, grid_a) and their corresponding annotations
+        ----------
+        """
+
+        device = all_anchors.device
+        n_anchors = len(all_anchors)
+        n_pred_anchors = len(self.anchor_mask)
+        n_anns = len(anns)
+
+        ann_boxes = anns[..., ANN_BBOX_X1:ANN_BBOX_Y2+1]
+        ann_boxes_topleft = ann_boxes.clone()
+        ann_boxes_topleft[..., ANN_BBOX_X2] -= ann_boxes_topleft[..., ANN_BBOX_X1]
+        ann_boxes_topleft[..., ANN_BBOX_Y2] -= ann_boxes_topleft[..., ANN_BBOX_Y1]
+        ann_boxes_topleft[..., ANN_BBOX_X1] = 0.0
+        ann_boxes_topleft[..., ANN_BBOX_Y1] = 0.0
+
+        all_anchor_boxes = torch.zeros((n_anchors, BBOX_N_ELEMS), dtype=torch.float32, device=device)
+        all_anchor_boxes[..., BBOX_X2:BBOX_Y2+1] = all_anchors
+
+        # IOUs between annotations and anchor boxes are the driving force behind responsible predictions
+        ann_anc_ious = bbox_iou_many_to_many(ann_boxes_topleft, all_anchor_boxes)
+
+        # Responsible anchors, True if anchor overlaps corresponding ground truth (anns) by more than some threshold
+        resp_anc_mask = ann_anc_ious > self.iou_thresh
+
+        # Anchors with the highest iou for an annotation are always responsible regardless of iou_thresh
+        best_ancs = torch.argmax(ann_anc_ious, dim=1)
+        ann_idxs = torch.arange(start=0, end=n_anns, step=1, device=device) # just to help index properly
+        resp_anc_mask[ann_idxs, best_ancs] = True
+
+        # Subset out anchors tied to this yolo layer's predictions
+        masked_idxs = torch.tensor(self.anchor_mask, dtype=torch.long, device=device)
+        resp_anc_mask = resp_anc_mask[..., masked_idxs]
+
+        # Corresponding annotations for each responsible prediction
+        #(n_anns, n_masked_anchors, n_bbox_elems)
+        anns_expanded = anns.expand((n_pred_anchors, n_anns, ANN_BBOX_N_ELEMS)).permute(1,0,2)
+        resp_anns = anns_expanded[resp_anc_mask]
+
+        # Grid coordinates for each responsible prediction
+        resp_anns_w = resp_anns[..., ANN_BBOX_X2] - resp_anns[..., ANN_BBOX_X1]
+        resp_anns_h = resp_anns[..., ANN_BBOX_Y2] - resp_anns[..., ANN_BBOX_Y1]
+        resp_anns_cx = resp_anns[..., ANN_BBOX_X1] + resp_anns_w / 2.0
+        resp_anns_cy = resp_anns[..., ANN_BBOX_Y1] + resp_anns_h / 2.0
+
+        # Grid coordinates are the floor of the center coordinate for the corresponding annotation bbox
+        resp_pred_h = resp_anns_cy.type(torch.long)
+        resp_pred_w = resp_anns_cx.type(torch.long)
+
+        # Anchor box idxs for responsible predictions
+        pred_anchor_idxs = torch.arange(start=0, end=n_pred_anchors, step=1, device=device)
+        pred_anchor_idxs = pred_anchor_idxs.expand(n_anns, n_pred_anchors)
+        resp_pred_a = pred_anchor_idxs[resp_anc_mask]
+
+        # The full index list for responsible predictions
+        resp_pred_idxs = (resp_pred_h, resp_pred_w, resp_pred_a)
+
+        return resp_pred_idxs, resp_anns
+
+    # iou_preds_anns
+    def iou_preds_anns(self, x, anns, grid_dim, pred_anchors):
+        """
+        ----------
+        Author: Damon Gwinn (gwinndr)
+        ----------
+        - Computes ious between predictions (x) and annotations
+        - Returns an n x m iou tensor where n is the number of predictions and m is the number of annotations
+        ----------
+        """
+
+        n_anchors = len(pred_anchors)
+
+        # Getting a flattened copy of txtytwth values for iou computations
+        x_ts = x[..., YOLO_TX:YOLO_TH+1].clone()
+        self.yolo_transform(x_ts, pred_anchors, objcls=False)
+        self.add_grid_offsets(x_ts, grid_dim, n_anchors)
+        x_ts = x_ts.view(-1, x_ts.shape[-1])
+
+        # Flattened annotations
+        anns = anns.view(-1, anns.shape[-1])
+
+        x_boxes = predictions_to_bboxes(x_ts)
+        ann_boxes = anns[..., ANN_BBOX_X1:ANN_BBOX_Y2+1]
+
+        x_ann_ious = bbox_iou_many_to_many(x_boxes, ann_boxes)
+
+        return x_ann_ious
 
     # to_string
     def to_string(self):
