@@ -65,6 +65,9 @@ def preprocess_image_train(image, annotations, target_dim, letterbox, force_cpu=
     else:
         input_image = image_resize(image, (target_dim, target_dim), annotations=annotations)
 
+    # Normalizing annotations
+    annotations[..., ANN_BBOX_X1:ANN_BBOX_Y2+1] /= target_dim
+
     # Converting to tensor
     input_tensor = image_to_tensor(input_image, device=device)
 

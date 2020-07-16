@@ -66,7 +66,7 @@ class CocoDataset(Dataset):
         # preprocessing
         img_tensor, anns = preprocess_image_train(image, anns, self.input_dim, self.letterbox, force_cpu=True)
 
-        return img_tensor, anns
+        return img_tensor, anns, img_id
 
     # load_image_by_id
     def load_image_by_id(self, img_id):
