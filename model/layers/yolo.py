@@ -5,6 +5,9 @@ from utilities.constants import *
 from utilities.bboxes import bbox_iou_one_to_many, predictions_to_bboxes, bbox_iou, bbox_iou_many_to_many, bbox_ciou
 from utilities.detections import extract_detections_single_image
 
+# Used for debugging
+yolo_layer_num = 0
+
 # The big cheese
 # YoloLayer
 class YoloLayer(nn.Module):
@@ -146,7 +149,6 @@ class YoloLayer(nn.Module):
         tot_bbox_loss = 0.0
         tot_obj_loss = 0.0
         tot_cls_loss = 0.0
-        avg_obj = 0.0
 
         for b, batch_x in enumerate(x):
             batch_anns = anns[b]
@@ -160,6 +162,10 @@ class YoloLayer(nn.Module):
                 # Indexes for responsible anchors (h,w,a) and their corresponding targets
                 resp_pred_idxs, resp_anns = self.responsible_predictions(all_anchors, batch_anns)
                 resp_pred_h, resp_pred_w, resp_pred_a = resp_pred_idxs
+                print(resp_pred_h)
+                print(resp_pred_w)
+                print(resp_pred_a+10)
+                print("")
 
                 # ious between predictions and annotations for masks
                 x_ann_ious = self.iou_preds_anns(batch_x, batch_anns, grid_dim, pred_anchors)
@@ -197,13 +203,15 @@ class YoloLayer(nn.Module):
             bbox_cious = bbox_ciou(resp_pred_boxes, resp_anns_boxes)
             # bbox_loss = mse(bbox_cious, target_ones)
             # bbox_loss = sse(bbox_cious, target_ones)
-            bbox_loss = (1.0 - bbox_cious).sum()
+            bbox_loss = (1.0 - bbox_cious).sum() / n_resp
 
             # Responsible objectness loss
             pred_obj = resp_preds[..., YOLO_OBJ]
             # resp_obj_loss = mse(pred_obj, target_ones)
-            resp_obj_loss = (1.0 - pred_obj).sum()
-            avg_obj += pred_obj.sum()
+            resp_obj_loss = sse(pred_obj, target_ones)
+            # resp_obj_loss = (1.0 - pred_obj).sum()
+            # print(pred_obj)
+            # print(1-pred_obj)
 
             # Responsible class loss
             pred_cls = resp_preds[..., YOLO_CLASS_START:]
@@ -214,16 +222,17 @@ class YoloLayer(nn.Module):
             target_cls[resp_idxs, resp_anns_cls] = 1.0
 
             # MSE relative to the number of responsible preds
-            # cls_loss = sse(pred_cls, target_cls) #/ n_resp
-            cls_loss = (target_cls - pred_cls).sum()
+            cls_loss = sse(pred_cls, target_cls) #/ n_resp
+            # cls_loss = (target_cls - pred_cls).sum()
 
             # Non-responsible object loss (without ignored preds)
             non_resp_objs = batch_x[~ignore_mask][..., YOLO_OBJ]
             non_resp_objs = torch.sigmoid(non_resp_objs)
             target_zeros = torch.zeros(non_resp_objs.shape, dtype=torch.float32, device=device)
 
-            # non_resp_obj_loss = sse(non_resp_objs, target_zeros)
-            non_resp_obj_loss = non_resp_objs.sum()
+            non_resp_obj_loss = sse(non_resp_objs, target_zeros)
+            # non_resp_obj_loss = non_resp_objs.sum()
+            # non_resp_obj_loss = torch.tensor(0)
 
             # Fixing NaNs
             loss_zero = torch.zeros((1,), dtype=torch.float32, device=device, requires_grad=True)
@@ -243,17 +252,15 @@ class YoloLayer(nn.Module):
             tot_obj_loss += obj_loss
             tot_cls_loss += cls_loss
 
-        avg_bbox_loss = tot_bbox_loss / batch_num
+        avg_bbox_loss = (tot_bbox_loss / batch_num) * 0.07
         avg_obj_loss = tot_obj_loss / batch_num
         avg_cls_loss = tot_cls_loss / batch_num
 
         total_loss = avg_bbox_loss + avg_obj_loss + avg_cls_loss
 
-        n_resp = 1 if n_resp == 0 else n_resp
-
+        print("tot_ciou_loss: %.4f" % tot_bbox_loss.item())
         print("bbox_loss: %.4f" % avg_bbox_loss.item())
         print("obj_loss: %.4f" % avg_obj_loss.item())
-        print("avg_1_obj: %.4f" % (avg_obj.item() / n_resp))
         print("cls_loss: %.4f" % avg_cls_loss.item())
         print("total_loss: %.4f" % total_loss)
         print("resp_anns: %d" % len(resp_anns))
