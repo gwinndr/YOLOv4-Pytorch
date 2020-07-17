@@ -39,7 +39,9 @@ class YoloLayer(nn.Module):
 
         self.iou_thresh = iou_thresh
         self.iou_loss = iou_loss
+
         self.iou_norm = iou_norm
+        self.cls_norm = cls_norm
 
         self.scale_xy = scale_xy
 
@@ -162,10 +164,6 @@ class YoloLayer(nn.Module):
                 # Indexes for responsible anchors (h,w,a) and their corresponding targets
                 resp_pred_idxs, resp_anns = self.responsible_predictions(all_anchors, batch_anns)
                 resp_pred_h, resp_pred_w, resp_pred_a = resp_pred_idxs
-                print(resp_pred_h)
-                print(resp_pred_w)
-                print(resp_pred_a+10)
-                print("")
 
                 # ious between predictions and annotations for masks
                 x_ann_ious = self.iou_preds_anns(batch_x, batch_anns, grid_dim, pred_anchors)
@@ -197,23 +195,17 @@ class YoloLayer(nn.Module):
             target_zeros = torch.zeros(resp_preds.shape[:-1], dtype=torch.float32, device=device, requires_grad=False)
             target_ones = target_zeros + 1.0
 
-            # Responsible bbox loss
+            ##### BBOX LOSS #####
             resp_pred_boxes = predictions_to_bboxes(resp_preds)
             resp_anns_boxes = resp_anns[..., ANN_BBOX_X1:ANN_BBOX_Y2+1]
             bbox_cious = bbox_ciou(resp_pred_boxes, resp_anns_boxes)
-            # bbox_loss = mse(bbox_cious, target_ones)
-            # bbox_loss = sse(bbox_cious, target_ones)
-            bbox_loss = (1.0 - bbox_cious).sum() / n_resp
+            bbox_loss = sse(bbox_cious, target_ones)
 
-            # Responsible objectness loss
+            ##### OBJECTNESS LOSS #####
             pred_obj = resp_preds[..., YOLO_OBJ]
-            # resp_obj_loss = mse(pred_obj, target_ones)
             resp_obj_loss = sse(pred_obj, target_ones)
-            # resp_obj_loss = (1.0 - pred_obj).sum()
-            # print(pred_obj)
-            # print(1-pred_obj)
 
-            # Responsible class loss
+            ##### CLASSIFICATION LOSS #####
             pred_cls = resp_preds[..., YOLO_CLASS_START:]
             resp_anns_cls = resp_anns[..., ANN_BBOX_CLASS].type(torch.long)
 
@@ -221,18 +213,14 @@ class YoloLayer(nn.Module):
             resp_idxs = torch.arange(start=0, end=n_resp, step=1, device=device) # just to help index properly
             target_cls[resp_idxs, resp_anns_cls] = 1.0
 
-            # MSE relative to the number of responsible preds
-            cls_loss = sse(pred_cls, target_cls) #/ n_resp
-            # cls_loss = (target_cls - pred_cls).sum()
+            cls_loss = sse(pred_cls, target_cls)
 
-            # Non-responsible object loss (without ignored preds)
+            ##### ZERO-OBJECTNESS LOSS #####
             non_resp_objs = batch_x[~ignore_mask][..., YOLO_OBJ]
             non_resp_objs = torch.sigmoid(non_resp_objs)
             target_zeros = torch.zeros(non_resp_objs.shape, dtype=torch.float32, device=device)
 
             non_resp_obj_loss = sse(non_resp_objs, target_zeros)
-            # non_resp_obj_loss = non_resp_objs.sum()
-            # non_resp_obj_loss = torch.tensor(0)
 
             # Fixing NaNs
             loss_zero = torch.zeros((1,), dtype=torch.float32, device=device, requires_grad=True)
@@ -252,18 +240,14 @@ class YoloLayer(nn.Module):
             tot_obj_loss += obj_loss
             tot_cls_loss += cls_loss
 
-        avg_bbox_loss = (tot_bbox_loss / batch_num) * 0.07
-        avg_obj_loss = tot_obj_loss / batch_num
-        avg_cls_loss = tot_cls_loss / batch_num
+        avg_bbox_loss = (tot_bbox_loss / batch_num) * self.iou_norm
+        avg_obj_loss = (tot_obj_loss / batch_num) * self.cls_norm
+        avg_cls_loss = (tot_cls_loss / batch_num) * self.cls_norm
 
         total_loss = avg_bbox_loss + avg_obj_loss + avg_cls_loss
 
-        print("tot_ciou_loss: %.4f" % tot_bbox_loss.item())
-        print("bbox_loss: %.4f" % avg_bbox_loss.item())
-        print("obj_loss: %.4f" % avg_obj_loss.item())
-        print("cls_loss: %.4f" % avg_cls_loss.item())
-        print("total_loss: %.4f" % total_loss)
-        print("resp_anns: %d" % len(resp_anns))
+        print("bbox_loss: %.4f  obj_loss: %.4f  cls_loss: %.4f  tot_loss: %.4f  count: %d" % \
+                (avg_bbox_loss, avg_obj_loss, avg_cls_loss, total_loss, n_resp))
         print("")
 
         return total_loss
