@@ -133,6 +133,10 @@ def draw_annotations(anns, image, class_names, verbose_output=False):
 
     image = image.copy()
 
+    # Removing padding annotations
+    ann_mask = (anns[..., ANN_BBOX_CLASS] != ANN_PAD_VAL)
+    anns = anns[ann_mask]
+
     bboxes = anns[..., ANN_BBOX_X1:ANN_BBOX_Y2+1].cpu().numpy()
     classes = anns[..., ANN_BBOX_CLASS].cpu().type(torch.int32).numpy()
 
