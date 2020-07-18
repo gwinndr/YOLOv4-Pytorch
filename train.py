@@ -37,34 +37,62 @@ def main():
     model = parse_config(config)
     load_weights(model, weights)
 
-    train_set = CocoDataset(train_imgs, input_dim=608, letterbox=True, annotation_file=train_anns)
+    train_set = CocoDataset(train_imgs, input_dim=608, letterbox=False, annotation_file=train_anns)
     print("")
 
-    x, anns = train_set[200]
+    x, anns, id = train_set[200]
+    x2, anns2, id = train_set[250]
+    # print(id)
+    # print(anns)
+
+    # anns_w = anns[..., BBOX_X2] - anns[..., BBOX_X1]
+    # anns_h = anns[..., BBOX_Y2] - anns[..., BBOX_Y1]
+    # anns_x = anns[..., BBOX_X1]
+    # anns_y = anns[..., BBOX_Y1]
+    #
+    # anns[..., BBOX_X1] = anns_x + anns_w / 2.0
+    # anns[..., BBOX_Y1] = anns_y + anns_h / 2.0
+    # anns[..., BBOX_X2] = anns_w
+    # anns[..., BBOX_Y2] = anns_h
+    #
+    # print(anns)
+    #
+    # import sys
+    # sys.exit(1)
 
     image = tensor_to_image(x)
 
-    # model.train()
-    model.eval()
+    model.train()
+    # model.eval()
+
+    x_in = torch.stack((x, x2))
+    anns_in = torch.stack((anns, anns2))
+    # print(x_in.shape)
+    # print(anns_in.shape)
 
     model.training_custom = True
-    out = model(x.unsqueeze(0), anns.unsqueeze(0))
+    # out = model(x.unsqueeze(0), anns.unsqueeze(0))
+    # out = model(x2.unsqueeze(0), anns2.unsqueeze(0))
+    out = model(x_in, anns_in)
     # print(out)
     # print(anns)
 
-    model.training_custom = False
-    with torch.no_grad():
-        out = model(x.unsqueeze(0))
+    print(SEPARATOR)
+    print("Error: %.4f" % (sum(out).item()/3))
 
-    dets = extract_detections(out, obj_thresh)[0]
-    dets = run_nms(dets, model, obj_thresh)
+    # model.training_custom = False
+    # with torch.no_grad():
+    #     out = model(x.unsqueeze(0))
+
+    # dets = extract_detections(out, obj_thresh)[0]
+    # dets = run_nms(dets, model, obj_thresh)
 
     # for ann in anns:
     #     ious = bbox_iou_one_to_many(ann[ANN_BBOX_X1:ANN_BBOX_Y2+1], dets[..., DETECTION_X1:DETECTION_Y2+1])
     #     print(ious)
 
-    dets_image = draw_detections(dets, image, class_names)
-    anns_image = draw_annotations(anns, image, class_names)
+    # dets_image = draw_detections(dets, image, class_names)
+    # anns_image = draw_annotations(anns, image, class_names)
 
     # print(dets[..., DETECTION_X1:DETECTION_Y2+1])
 

@@ -25,11 +25,12 @@ class CocoDataset(Dataset):
     """
 
     # __init__
-    def __init__(self, image_root, input_dim, letterbox, annotation_file=None):
+    def __init__(self, image_root, input_dim, letterbox, annotation_file=None, max_anns=1000):
         self.image_root = image_root
         self.annotation_file = annotation_file
         self.input_dim = input_dim
         self.letterbox = letterbox
+        self.max_anns = max_anns
 
         self.coco_api = COCO(self.annotation_file)
         self.img_ids = self.coco_api.getImgIds()
@@ -64,7 +65,16 @@ class CocoDataset(Dataset):
         anns = self.load_annotations_by_id(img_id)
 
         # preprocessing
-        img_tensor, anns = preprocess_image_train(image, anns, self.input_dim, self.letterbox, force_cpu=True)
+        img_tensor, anns_partial = preprocess_image_train(image, anns, self.input_dim, self.letterbox, force_cpu=True)
+
+        n_anns = len(anns_partial)
+        if(n_anns > self.max_anns):
+            print("CocoDataset: Warning on image id %d, exceeds maximum annotations, any extra will be cut off")
+            n_anns = self.max_anns
+
+        # Filling up to max anns
+        anns = torch.full((self.max_anns, ANN_BBOX_N_ELEMS), ANN_PAD_VAL, dtype=torch.float32, device=cpu_device())
+        anns[:n_anns] = anns_partial[:n_anns]
 
         return img_tensor, anns, img_id
 

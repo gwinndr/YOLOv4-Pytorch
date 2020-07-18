@@ -144,16 +144,21 @@ class YoloLayer(nn.Module):
         # (batch, grid_dim, grid_dim, n_masked_anchors, attrs_per_anchor)
         x = x.permute(0,3,4,1,2).contiguous()
 
-        # Mapping annotations to grid
-        anns = anns.clone()
-        anns[..., ANN_BBOX_X1:ANN_BBOX_Y2+1] *= grid_dim
-
         tot_bbox_loss = 0.0
         tot_obj_loss = 0.0
         tot_cls_loss = 0.0
+        tot_n_resp = 0
 
         for b, batch_x in enumerate(x):
+            # Removing padding labels
             batch_anns = anns[b]
+            ann_mask = (batch_anns[..., ANN_BBOX_CLASS] != ANN_PAD_VAL)
+            batch_anns = batch_anns[ann_mask]
+
+            # Mapping annotations to grid
+            batch_anns = batch_anns.clone()
+            batch_anns[..., ANN_BBOX_X1:ANN_BBOX_Y2+1] *= grid_dim
+
             n_anns = len(batch_anns)
             ann_boxes = batch_anns[..., ANN_BBOX_X1:ANN_BBOX_Y2+1]
             ann_cls = batch_anns[..., ANN_BBOX_CLASS].type(torch.int32)
@@ -216,6 +221,7 @@ class YoloLayer(nn.Module):
             cls_loss = sse(pred_cls, target_cls)
 
             ##### ZERO-OBJECTNESS LOSS #####
+            # Ignored predictions are not penalized
             non_resp_objs = batch_x[~ignore_mask][..., YOLO_OBJ]
             non_resp_objs = torch.sigmoid(non_resp_objs)
             target_zeros = torch.zeros(non_resp_objs.shape, dtype=torch.float32, device=device)
@@ -239,6 +245,7 @@ class YoloLayer(nn.Module):
             tot_bbox_loss += bbox_loss
             tot_obj_loss += obj_loss
             tot_cls_loss += cls_loss
+            tot_n_resp += n_resp
 
         avg_bbox_loss = (tot_bbox_loss / batch_num) * self.iou_norm
         avg_obj_loss = (tot_obj_loss / batch_num) * self.cls_norm
@@ -246,8 +253,8 @@ class YoloLayer(nn.Module):
 
         total_loss = avg_bbox_loss + avg_obj_loss + avg_cls_loss
 
-        print("bbox_loss: %.4f  obj_loss: %.4f  cls_loss: %.4f  tot_loss: %.4f  count: %d" % \
-                (avg_bbox_loss, avg_obj_loss, avg_cls_loss, total_loss, n_resp))
+        print("bbox_loss: %.4f  obj_loss: %.4f  cls_loss: %.4f  tot_loss: %.4f  batch_size: %d  count: %d" % \
+                (avg_bbox_loss, avg_obj_loss, avg_cls_loss, total_loss, batch_num, tot_n_resp))
         print("")
 
         return total_loss
