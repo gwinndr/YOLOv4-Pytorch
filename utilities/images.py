@@ -136,6 +136,15 @@ def draw_annotations(anns, image, class_names, verbose_output=False):
     bboxes = anns[..., ANN_BBOX_X1:ANN_BBOX_Y2+1].cpu().numpy()
     classes = anns[..., ANN_BBOX_CLASS].cpu().type(torch.int32).numpy()
 
+    img_h = image.shape[CV2_H_DIM]
+    img_w = image.shape[CV2_W_DIM]
+
+    # de-normalizing
+    bboxes[..., ANN_BBOX_X1] *= img_w
+    bboxes[..., ANN_BBOX_Y1] *= img_h
+    bboxes[..., ANN_BBOX_X2] *= img_w
+    bboxes[..., ANN_BBOX_Y2] *= img_h
+
     n_colors = len(BBOX_COLORS)
 
     # Drawing each detection on the image
