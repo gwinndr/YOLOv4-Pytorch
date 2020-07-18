@@ -24,8 +24,6 @@ class Darknet(nn.Module):
         self.layer_modules = layer_modules
         self.net_block = net_block
 
-        self.training_custom = False
-
         self.yolo_layers = []
         for l in self.layer_modules:
             if(isinstance(l, YoloLayer)):
@@ -43,7 +41,7 @@ class Darknet(nn.Module):
         ----------
         """
 
-        if(self.training_custom and (anns is None)):
+        if(self.training and (anns is None)):
             print("Darknet: Error: In training mode without giving annotations")
             return None
 
@@ -53,7 +51,7 @@ class Darknet(nn.Module):
 
         for i, module in enumerate(self.layer_modules):
             if(module.is_output_layer):
-                if(self.training_custom):
+                if(self.training):
                     model_out.append(module(x, input_dim, anns=anns))
                 else:
                     model_out.append(module(x, input_dim))
@@ -67,8 +65,7 @@ class Darknet(nn.Module):
             # Saving outputs
             saved_outputs.append(x)
 
-        # if(not self.training):
-        if(not self.training_custom):
+        if(not self.training):
             model_out = torch.cat(model_out, dim=PREDS_N_PREDS_DIM)
 
         return model_out

@@ -62,15 +62,12 @@ def main():
 
     image = tensor_to_image(x)
 
-    model.train()
-    # model.eval()
-
     x_in = torch.stack((x, x2))
     anns_in = torch.stack((anns, anns2))
     # print(x_in.shape)
     # print(anns_in.shape)
 
-    model.training_custom = True
+    model.train()
     # out = model(x.unsqueeze(0), anns.unsqueeze(0))
     # out = model(x2.unsqueeze(0), anns2.unsqueeze(0))
     out = model(x_in, anns_in)
@@ -80,27 +77,27 @@ def main():
     print(SEPARATOR)
     print("Error: %.4f" % (sum(out).item()/3))
 
-    # model.training_custom = False
-    # with torch.no_grad():
-    #     out = model(x.unsqueeze(0))
+    model.eval()
+    with torch.no_grad():
+        out = model(x.unsqueeze(0))
 
-    # dets = extract_detections(out, obj_thresh)[0]
-    # dets = run_nms(dets, model, obj_thresh)
+    dets = extract_detections(out, obj_thresh)[0]
+    dets = run_nms(dets, model, obj_thresh)
 
-    # for ann in anns:
-    #     ious = bbox_iou_one_to_many(ann[ANN_BBOX_X1:ANN_BBOX_Y2+1], dets[..., DETECTION_X1:DETECTION_Y2+1])
-    #     print(ious)
+    for ann in anns:
+        ious = bbox_iou_one_to_many(ann[ANN_BBOX_X1:ANN_BBOX_Y2+1], dets[..., DETECTION_X1:DETECTION_Y2+1])
+        # print(ious)
 
-    # dets_image = draw_detections(dets, image, class_names)
-    # anns_image = draw_annotations(anns, image, class_names)
+    dets_image = draw_detections(dets, image, class_names)
+    anns_image = draw_annotations(anns, image, class_names)
 
     # print(dets[..., DETECTION_X1:DETECTION_Y2+1])
 
-    # cv2.imshow("Annotations", anns_image)
-    # # cv2.waitKey(0)
-    #
-    # cv2.imshow("Detections", dets_image)
+    cv2.imshow("Annotations", anns_image)
     # cv2.waitKey(0)
+
+    cv2.imshow("Detections", dets_image)
+    cv2.waitKey(0)
 
     return
 
