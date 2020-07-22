@@ -45,7 +45,12 @@ class YoloLayer(nn.Module):
 
         self.scale_xy = scale_xy
 
+        # Postprocessing
         self.nms_kind = nms_kind
+
+        # Training augmentations
+        self.jitter = jitter
+        self.random = random
 
     # forward
     def forward(self, x, input_dim, anns=None):

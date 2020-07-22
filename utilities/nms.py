@@ -18,10 +18,9 @@ def run_nms(dets, model, obj_thresh, nms_thresh=NMS_THRESHOLD):
     ----------
     """
 
-    # Only need one since nms values must be consistent (see verify_yolo_hyperparams in configs.py)
-    yolo_layer = model.get_yolo_layers()[0]
+    nms_kind = model.net_block["nms_kind"]
 
-    if(yolo_layer.nms_kind == GREEDY_NMS):
+    if(nms_kind == GREEDY_NMS):
         greedy_nms_inplace(dets, nms_thresh)
 
     # Filtering out detections without a class prob greater than obj_thresh
