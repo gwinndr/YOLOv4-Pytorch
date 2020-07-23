@@ -2,6 +2,34 @@ import argparse
 
 from utilities.constants import *
 
+# parse_train_args
+def parse_train_args():
+    """
+    ----------
+    Author: Damon Gwinn (gwinndr)
+    ----------
+    - Argparse arguments for train.py
+    ----------
+    """
+
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("-train_images", type=str, default="./COCO/2017/train2017/", help="Folder containing training images")
+    parser.add_argument("-train_anns", type=str, default="./COCO/2017/annotations/instances_train2017.json", help="File containing bbox annotations for training images")
+
+    parser.add_argument("-val_images", type=str, default="./COCO/2017/val2017/", help="Folder containing validation images")
+    parser.add_argument("-val_anns", type=str, default="./COCO/2017/annotations/instances_val2017.json", help="File containing bbox annotations for validation images")
+
+    parser.add_argument("-cfg", type=str, default="./configs/yolov4.cfg", help="Yolo configuration file")
+    parser.add_argument("-weights", type=str, default="./weights/yolov4.weights", help="Yolo pre-trained weights file")
+
+    parser.add_argument("-obj_thresh", type=float, default=OBJ_THRESH_DEFAULT, help="Confidence threshold for filtering out predictions (validation)")
+
+    parser.add_argument("--print_network", action="store_true", help="Print out each layer in the darknet model with their hyperparameters")
+    parser.add_argument("--force_cpu", action="store_true", help="Forces the model to run on the cpu regardless of cuda status")
+
+    return parser.parse_args()
+
 # parse_detect_args
 def parse_detect_args():
     """

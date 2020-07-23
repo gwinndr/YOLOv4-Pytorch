@@ -4,6 +4,7 @@ import numpy as np
 
 from utilities.constants import *
 from utilities.images import image_float_to_uint8, image_uint8_to_float
+from utilities.rando import rand_scale
 
 ##### IMAGE RESIZING #####
 # image_resize
@@ -42,6 +43,33 @@ def image_resize(image, target_dim, annotations=None):
 
 
     return new_img
+
+# possible_image_sizings
+def possible_image_sizings(init_dim, rand_coef, resize_step):
+    """
+    ----------
+    Author: Damon Gwinn (gwinndr)
+    ----------
+    - Computes a list of possible image resizings based on the initial network dimensions and the rand_coef
+    - List is in order from smallest to largest
+    - The rand_coef is a float value greater than 1.0 that defines how far the image sizing is
+      allowed to stray from the initial sizing
+    - The resize_step is equivalent to the network stride (32 for yolov4 and yolov3 for example)
+    ----------
+    """
+
+    max_scale = rand_coef
+    min_scale = 1.0/max_scale
+
+    max_dim = round(max_scale * init_dim / resize_step + 1) * resize_step;
+    min_dim = round(min_scale * init_dim / resize_step + 1) * resize_step;
+
+    # np.arange stop is non-inclusive
+    max_dim += resize_step
+
+    dim_list = np.arange(min_dim, max_dim, resize_step, dtype=np.int32).tolist()
+
+    return dim_list
 
 ##### LETTERBOXING #####
 # letterbox_image
