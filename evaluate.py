@@ -39,7 +39,7 @@ def main():
             print("Error: Width and height must match in [net]")
             return
 
-        network_dim = int(model.net_block.width)
+        network_dim = model.net_block.width
 
         # Letterboxing
         letterbox = not args.no_letterbox
