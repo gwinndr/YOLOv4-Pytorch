@@ -18,7 +18,7 @@ def run_nms(dets, model, obj_thresh, nms_thresh=NMS_THRESHOLD):
     ----------
     """
 
-    nms_kind = model.net_block["nms_kind"]
+    nms_kind = model.net_block.nms_kind
 
     if(nms_kind == GREEDY_NMS):
         greedy_nms_inplace(dets, nms_thresh)

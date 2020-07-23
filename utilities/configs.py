@@ -3,6 +3,7 @@ import torch.nn as nn
 
 from .constants import *
 from model.darknet import Darknet
+from model.net_block import NetBlock
 from model.layers.convolutional import ConvolutionalLayer
 from model.layers.maxpool import MaxpoolLayer
 from model.layers.route import RouteLayer
@@ -126,12 +127,11 @@ def yolo_hyperparams_to_netblock(net_block, yolo_layers):
     else:
         yolo_layer = yolo_layers
 
-    net_block["nms_kind"] = yolo_layer.nms_kind
-    net_block["jitter"] = yolo_layer.jitter
-    net_block["random"] = yolo_layer.random
+    net_block.jitter = yolo_layer.jitter
+    net_block.random = yolo_layer.random
+    net_block.nms_kind = yolo_layer.nms_kind
 
     return
-
 
 
 # parse_lines_into_blocks
@@ -200,9 +200,11 @@ def parse_blocks_into_model(blocks):
         print("parse_blocks_into_model: Error: Config file must start with [net] block.")
         return None
 
+    net_block = parse_net_block(net_block)
+
     layer_count = 0
     for block in blocks[1:]:
-        layer, out_channels = parse_block(block, layer_output_channels, layer_count)
+        layer, out_channels = parse_layer_block(block, layer_output_channels, layer_count)
 
         module_list.append(layer)
         layer_output_channels.append(out_channels)
@@ -216,8 +218,8 @@ def parse_blocks_into_model(blocks):
 
     return darknet_model
 
-# parse_block
-def parse_block(block, layer_output_channels, layer_idx):
+# parse_layer_block
+def parse_layer_block(block, layer_output_channels, layer_idx):
     """
     ----------
     Author: Damon Gwinn (gwinndr)
@@ -279,7 +281,95 @@ def parse_block(block, layer_output_channels, layer_idx):
     return parsed_layer, out_channels
 
 
-##### LAYER PARSING #####
+##### BLOCK PARSING #####
+# find_option
+def find_option(block, key, type, default, loud=False):
+    """
+    ----------
+    Author: Damon Gwinn (gwinndr)
+    ----------
+    - Finds the option specified by key and sets the value according to type
+    - If option not found, uses default
+    - If default is used and loud is True, prints that the default is being used
+    ----------
+    """
+
+    if(key in block.keys()):
+        val = block[key]
+    else:
+        val = default
+        if(loud):
+            print("parsing", key, ": Using default:", default)
+
+    val = type(val)
+
+    return val
+
+# find_option_list
+def find_option_list(block, key, type, default, loud=False):
+    """
+    ----------
+    Author: Damon Gwinn (gwinndr)
+    ----------
+    - Finds the option specified by key and creates a list of values according to type
+    - Value is parsed according to a ','. Default is assumed to be a list.
+    - If option not found, uses default
+    - If default is used and loud is True, prints that the default is being used
+    ----------
+    """
+
+    if(key in block.keys()):
+        val = block[key]
+        val = val.split(",")
+        val = [s.strip() for s in val]
+    else:
+        val = default
+        if(loud):
+            print("parsing", key, ": Using default:", default)
+
+    val = [type(v) for v in val]
+
+    return val
+
+# parse_net_block
+def parse_net_block(block):
+    """
+    ----------
+    Author: Damon Gwinn (gwinndr)
+    ----------
+    - Parses network block into a NetBlock
+    ----------
+    """
+
+    batch = find_option(block, "batch", int, NET_BATCH_DEF, loud=True)
+    subdiv = find_option(block, "subdivisions", int, NET_SUBDIV_DEF, loud=True)
+    width = find_option(block, "width", int, NET_W_DEF, loud=True)
+    height = find_option(block, "height", int, NET_H_DEF, loud=True)
+    channels = find_option(block, "channels", int, NET_CH_DEF, loud=True)
+    momentum = find_option(block, "momentum", float, NET_MOMEN_DEF)
+    decay = find_option(block, "decay", float, NET_DECAY_DEF)
+    angle = find_option(block, "angle", float, NET_ANG_DEF)
+    saturation = find_option(block, "saturation", float, NET_SATUR_DEF)
+    exposure = find_option(block, "exposure", float, NET_EXPOS_DEF)
+    hue = find_option(block, "hue", float, NET_HUE_DEF)
+    lr = find_option(block, "learning_rate", float, NET_LR_DEF, loud=True)
+    burn_in = find_option(block, "burn_in", int, NET_BURN_DEF)
+    max_batches = find_option(block, "max_batches", int, NET_MAX_BAT_DEF, loud=True)
+    policy = find_option(block, "policy", str, NET_POL_DEF, loud=True)
+    steps = find_option_list(block, "steps", int, NET_STEP_DEF)
+    scales = find_option_list(block, "scales", float, NET_SCALE_DEF)
+    mosaic = find_option(block, "mosaic", bool, NET_MOSAIC_DEF)
+    resize_step = find_option(block, "resize_step", int, NET_RESIZE_STEP_DEF)
+
+    net_block = NetBlock(
+        batch=batch, subdivisions=subdiv, width=width, height=height, channels=channels,
+        momentum=momentum, decay=decay, angle=angle, saturation=saturation, exposure=exposure,
+        hue=hue, lr=lr, burn_in=burn_in, max_batches=max_batches, policy=policy, steps=steps,
+        scales=scales, mosaic=mosaic, resize_step=resize_step
+    )
+
+    return net_block
+
 
 # parse_convolutional_block
 def parse_convolutional_block(block, in_channels, layer_idx):

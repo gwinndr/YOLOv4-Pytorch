@@ -56,12 +56,42 @@ COCO_ANN_TYPE_KEYP = "keypoints"
 # Index with yolo's 80 class id to get the corresponding coco 91 class id
 COCO_80_TO_91 = ( 1,2,3,4,5,6,7,8,9,10,11,13,14,15,16,17,18,19,20,21,22,23,24,25,27,28,31,32,33,34,35,36,37,38,39,40,41,42,43,44,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,67,70,72,73,74,75,76,77,78,79,80,81,82,84,85,86,87,88,89,90 )
 
+##### Supported policies #####
+POLICY_CONSTANT = "constant"
+POLICY_STEPS = "steps"
+
 ##### SUPPORTED NMS TYPES #####
 GREEDY_NMS = "greedynms"
 
-# Supported Bbox loss
+##### Supported Bbox loss #####
 BBOX_MSE_LOSS = "mse"
 BBOX_CIOU_LOSS = "ciou"
+
+##### NET BLOCK #####
+NET_BATCH_DEF = 1
+NET_SUBDIV_DEF = 1
+NET_W_DEF = 416
+NET_H_DEF = 416
+NET_CH_DEF = 3
+NET_MOMEN_DEF = 0.9
+NET_DECAY_DEF = 0.0001
+NET_ANG_DEF = 0
+NET_SATUR_DEF = 1
+NET_EXPOS_DEF = 1
+NET_HUE_DEF = 0
+NET_LR_DEF = 0.001
+NET_BURN_DEF = 0
+NET_MAX_BAT_DEF = 500
+NET_POL_DEF = POLICY_CONSTANT
+NET_STEP_DEF = (1,)
+NET_SCALE_DEF = (1,)
+NET_MOSAIC_DEF = 0
+NET_RESIZE_STEP_DEF = 32
+
+# Note: present on yolo_layer but moved to net_block when parsing configs
+NET_JITTER_DEF = 0.2
+NET_RAND_DEF = 0
+NET_NMS_DEF = GREEDY_NMS
 
 ##### CONVOLUTIONAL DEFAULT CONSTANTS #####
 # Layer init defaults
@@ -78,14 +108,14 @@ POOL_SPECIAL_PAD_MODE = "replicate"
 
 ##### YOLO CONSTANTS #####
 # Layer init defaults
-YOLO_RANDOM = False
-YOLO_JITTER = 0
+YOLO_RANDOM = NET_RAND_DEF
+YOLO_JITTER = NET_JITTER_DEF
 YOLO_SCALEXY = 1
 YOLO_IOU_THRESH = 0.25
 YOLO_CLS_NORM = 1
 YOLO_IOU_NORM = 1
 YOLO_IOU_LOSS = BBOX_MSE_LOSS
-YOLO_NMS_KIND = GREEDY_NMS
+YOLO_NMS_KIND = NET_NMS_DEF
 YOLO_BETA_NMS = 0.6
 YOLO_MAX_DELTA = 5
 

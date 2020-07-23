@@ -35,11 +35,11 @@ def main():
         model.eval()
 
         # Network input dim
-        if(model.net_block["width"] != model.net_block["height"]):
+        if(model.net_block.width != model.net_block.height):
             print("Error: Width and height must match in [net]")
             return
 
-        network_dim = int(model.net_block["width"])
+        network_dim = int(model.net_block.width)
 
         # Letterboxing
         letterbox = not args.no_letterbox

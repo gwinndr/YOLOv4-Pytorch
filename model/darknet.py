@@ -77,7 +77,7 @@ class Darknet(nn.Module):
         Author: Damon Gwinn (gwinndr)
         ----------
         - Returns the net_block
-        - net_block is a dictionary containing all key-value pairs under the [net] heading
+        - net_block is a NetBlock class under model.net_block
         ----------
         """
 
@@ -120,6 +120,10 @@ class Darknet(nn.Module):
         print(SEPARATOR, file=f)
         print("START NETWORK PRINT:", file=f)
         print("", file=f)
+
+        print(self.net_block.to_string(), file=f)
+        print("", file=f)
+
         for i, module in enumerate(self.layer_modules):
             print("   ", i, ":::", module.to_string(), file=f)
 
