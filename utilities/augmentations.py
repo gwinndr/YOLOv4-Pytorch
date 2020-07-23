@@ -4,7 +4,6 @@ import numpy as np
 
 from utilities.constants import *
 from utilities.images import image_float_to_uint8, image_uint8_to_float
-from utilities.rando import rand_scale
 
 ##### IMAGE RESIZING #####
 # image_resize
