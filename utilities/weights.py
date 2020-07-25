@@ -33,6 +33,7 @@ def load_weights(model, weights_file):
         # print(len(weights))
 
         if(cur_pos != len(weights)):
-            raise ValueError("Weights file has more weights than learnable parameters")
+            print("")
+            print("======= WARNING: Weights file has more weights than learnable parameters =======")
 
         return version, imgs_seen
