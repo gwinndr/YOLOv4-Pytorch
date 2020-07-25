@@ -19,8 +19,7 @@ def build_optimizer(model):
     net = model.net_block
 
     # Learn rate is divided by the batch size in darknet
-    # lr = net.lr / net.batch
-    lr = net.lr
+    lr = net.lr / net.batch
     batches_seen = model.imgs_seen // net.batch
 
     sgd = SGD(model.parameters(), lr=lr, momentum=net.momentum, weight_decay=net.decay)
