@@ -175,14 +175,21 @@ def coco_evaluate_bbox(coco_dataset, model, network_dim, obj_thresh, letterbox, 
         print("")
 
         # Evaluation of coco images using the API
-        coco_dts = coco_dataset.coco_api.loadRes(model_dts)
-        coco_evaluator = COCOeval(coco_dataset.coco_api, coco_dts, COCO_ANN_TYPE_BBOX)
-        coco_evaluator.params.imgIds = all_img_ids
-        coco_evaluator.evaluate()
-        coco_evaluator.accumulate()
-        coco_evaluator.summarize()
+        if(len(model_dts) > 0):
+            coco_dts = coco_dataset.coco_api.loadRes(model_dts)
+            coco_evaluator = COCOeval(coco_dataset.coco_api, coco_dts, COCO_ANN_TYPE_BBOX)
+            coco_evaluator.params.imgIds = all_img_ids
+            coco_evaluator.evaluate()
+            coco_evaluator.accumulate()
+            coco_evaluator.summarize()
+            stats = coco_evaluator.stats
+        else:
+            print("No detections, everything is 0...")
+            stats = [0] * 12
 
-    return coco_evaluator.stats
+        print("")
+
+    return stats
 
 # detections_to_coco_format
 def detections_to_coco_format(detections, img_id, model_dts=None):
