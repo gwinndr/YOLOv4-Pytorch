@@ -69,4 +69,4 @@ class RouteLayer(nn.Module):
 
         return \
             "ROUT: layers: %s" % \
-            (str(self.layers))
+            (",".join([str(l)for l in self.layers]))

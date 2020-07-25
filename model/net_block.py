@@ -34,7 +34,7 @@ class NetBlock:
 
     def to_string(self):
         ret = "NETWORK: batch: %d  subdivs: %d  width: %d  height: %d  channels: %d  resize_step: %d\n" \
-              "         lr: %f  momentum: %f  decay: %.f  burn_in: %d  max_batches: %d\n" \
+              "         lr: %f  momentum: %f  decay: %f  burn_in: %d  max_batches: %d\n" \
               "         angle: %f  saturation: %f  exposure: %f  hue: %f  mosaic: %d\n" \
               "         jitter: %f  random: %f  nms_kind: '%s'\n" \
               "         policy: '%s'" % \

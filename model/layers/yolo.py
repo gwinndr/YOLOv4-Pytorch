@@ -428,6 +428,13 @@ class YoloLayer(nn.Module):
         ----------
         """
 
+        mask = ",".join([str(m) for m in self.anchor_mask])
+
         return \
-            "YOLO: ignore: %.2f  truth: %.2f  scalexy: %.2f  nms_t: %s" % \
-            (self.ignore_thresh, self.truth_thresh, self.scale_xy, self.nms_kind)
+            "YOLO:\n" \
+            "      mask: %s  n_cls: %d  scalexy: %f  ignore: %f  truth: %f\n" \
+            "      iou_norm: %f  cls_norm: %f  iou_thresh: %f  iou_loss: %s\n" \
+            "      nms_kind: %s  jitter: %f  random: %f" % \
+            (mask, self.n_classes, self.scale_xy, self.ignore_thresh, self.truth_thresh,
+             self.iou_norm, self.cls_norm, self.iou_thresh, self.iou_loss,
+             self.nms_kind, self.jitter, self.random)
