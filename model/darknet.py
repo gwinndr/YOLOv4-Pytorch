@@ -18,11 +18,13 @@ class Darknet(nn.Module):
     """
 
     # __init__
-    def __init__(self, layer_modules, net_block=None):
+    def __init__(self, layer_modules, net_block=None, version="0.0.0", imgs_seen=0):
         super(Darknet, self).__init__()
 
         self.layer_modules = layer_modules
         self.net_block = net_block
+        self.version = version
+        self.imgs_seen = imgs_seen
 
         self.yolo_layers = []
         for l in self.layer_modules:

@@ -24,6 +24,7 @@ def main():
     with torch.no_grad():
         if(args.force_cpu):
             print("----- WARNING: Model is using the CPU (--force_cpu), expect model to run slower! -----")
+            print("")
             use_cuda(False)
 
         print("Parsing config into model...")
@@ -45,7 +46,7 @@ def main():
         letterbox = not args.no_letterbox
 
         print("Loading weights...")
-        version, imgs_seen = load_weights(model, args.weights)
+        load_weights(model, args.weights)
 
         print("")
         print(SEPARATOR)
@@ -53,8 +54,8 @@ def main():
         print("GPU:", gpu_device_name())
         print("Config:", args.cfg)
         print("Weights:", args.weights)
-        print("Version:", ".".join([str(v) for v in version]))
-        print("Images seen:", imgs_seen)
+        print("Version:", model.version)
+        print("Images seen:", model.imgs_seen)
         print("")
         print("Network Dim:", network_dim)
         print("Letterbox:", letterbox)
