@@ -14,7 +14,7 @@ class UpsampleLayer(nn.Module):
     """
 
     # __init__
-    def __init__(self, stride):
+    def __init__(self, stride=UPSAMP_STRIDE_DEF):
         super(UpsampleLayer, self).__init__()
 
         self.has_learnable_params = False

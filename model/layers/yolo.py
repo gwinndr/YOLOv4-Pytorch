@@ -20,10 +20,12 @@ class YoloLayer(nn.Module):
     """
 
     # __init__
-    def __init__(self, anchors, anchor_mask, n_classes, ignore_thresh, truth_thresh, random=YOLO_RANDOM,
-        jitter=YOLO_JITTER, scale_xy=YOLO_SCALEXY, iou_thresh=YOLO_IOU_THRESH, cls_norm=YOLO_CLS_NORM,
-        iou_norm=YOLO_IOU_NORM, iou_loss=YOLO_IOU_LOSS, nms_kind=YOLO_NMS_KIND, beta_nms=YOLO_BETA_NMS,
-        max_delta=YOLO_MAX_DELTA):
+    def __init__(self,
+        anchors, anchor_mask, n_classes=YOLO_NCLS_DEF, ignore_thresh=YOLO_IGNORE_DEF,
+        truth_thresh=YOLO_TRUTH_DEF, random=YOLO_RANDOM_DEF, jitter=YOLO_JITTER_DEF,
+        scale_xy=YOLO_SCALEXY_DEF, iou_thresh=YOLO_IOU_THRESH_DEF, cls_norm=YOLO_CLS_NORM_DEF,
+        iou_norm=YOLO_IOU_NORM_DEF, iou_loss=YOLO_IOU_LOSS_DEF, nms_kind=YOLO_NMS_KIND_DEF,
+        beta_nms=YOLO_BETA_NMS_DEF, max_delta=YOLO_MAX_DELTA_DEF):
 
         super(YoloLayer, self).__init__()
 
@@ -36,19 +38,15 @@ class YoloLayer(nn.Module):
         self.n_classes = n_classes
         self.ignore_thresh = ignore_thresh
         self.truth_thresh = truth_thresh
-
         self.iou_thresh = iou_thresh
         self.iou_loss = iou_loss
-
         self.iou_norm = iou_norm
         self.cls_norm = cls_norm
-
         self.scale_xy = scale_xy
-
-        # Postprocessing
+        self.beta_nms = beta_nms
+        self.max_delta = max_delta
+        # Note: Below is also moved to net_block when parsing configs
         self.nms_kind = nms_kind
-
-        # Training augmentations
         self.jitter = jitter
         self.random = random
 
@@ -64,7 +62,6 @@ class YoloLayer(nn.Module):
         ----------
         """
 
-        # if(self.training):
         if(anns is not None):
             out = self.yolo_train(x, input_dim, anns)
         else:

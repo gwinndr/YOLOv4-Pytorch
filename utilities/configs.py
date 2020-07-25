@@ -283,7 +283,7 @@ def parse_layer_block(block, layer_output_channels, layer_idx):
 
 ##### BLOCK PARSING #####
 # find_option
-def find_option(block, key, type, default, loud=False):
+def find_option(block, key, type, default, loud=False, layer_name=None, layer_idx=-1):
     """
     ----------
     Author: Damon Gwinn (gwinndr)
@@ -291,6 +291,7 @@ def find_option(block, key, type, default, loud=False):
     - Finds the option specified by key and sets the value according to type
     - If option not found, uses default
     - If default is used and loud is True, prints that the default is being used
+    - layer_name (str) and layer_idx (int) further specify layer details when printing with loud
     ----------
     """
 
@@ -299,14 +300,20 @@ def find_option(block, key, type, default, loud=False):
     else:
         val = default
         if(loud):
-            print("parsing", key, ": Using default:", default)
+            if(layer_name is None):
+                label = ""
+            else:
+                label = "%s at idx %d:" % (layer_name, layer_idx)
 
-    val = type(val)
+            print(label, "Using default:", default, "for key:", key)
+
+    if(val is not None):
+        val = type(val)
 
     return val
 
 # find_option_list
-def find_option_list(block, key, type, default, loud=False):
+def find_option_list(block, key, type, default, loud=False, layer_name=None, layer_idx=-1):
     """
     ----------
     Author: Damon Gwinn (gwinndr)
@@ -315,6 +322,7 @@ def find_option_list(block, key, type, default, loud=False):
     - Value is parsed according to a ','. Default is assumed to be a list.
     - If option not found, uses default
     - If default is used and loud is True, prints that the default is being used
+    - layer_name (str) and layer_idx (int) further specify layer details when printing with loud
     ----------
     """
 
@@ -325,9 +333,15 @@ def find_option_list(block, key, type, default, loud=False):
     else:
         val = default
         if(loud):
-            print("parsing", key, ": Using default:", default)
+            if(layer_name is None):
+                label = ""
+            else:
+                label = "%s at idx %d:" % (layer_name, layer_idx)
 
-    val = [type(v) for v in val]
+            print(label, "Using default:", default, "for key:", key)
+
+    if(val is not None):
+        val = [type(v) for v in val]
 
     return val
 
@@ -341,24 +355,27 @@ def parse_net_block(block):
     ----------
     """
 
-    batch = find_option(block, "batch", int, NET_BATCH_DEF, loud=True)
-    subdiv = find_option(block, "subdivisions", int, NET_SUBDIV_DEF, loud=True)
-    width = find_option(block, "width", int, NET_W_DEF, loud=True)
-    height = find_option(block, "height", int, NET_H_DEF, loud=True)
-    channels = find_option(block, "channels", int, NET_CH_DEF, loud=True)
+    layer_name = "NetworkBlock"
+    layer_idx = -1
+
+    batch = find_option(block, "batch", int, NET_BATCH_DEF, loud=True, layer_name=layer_name, layer_idx=layer_idx)
+    subdiv = find_option(block, "subdivisions", int, NET_SUBDIV_DEF, loud=True, layer_name=layer_name, layer_idx=layer_idx)
+    width = find_option(block, "width", int, NET_W_DEF, loud=True, layer_name=layer_name, layer_idx=layer_idx)
+    height = find_option(block, "height", int, NET_H_DEF, loud=True, layer_name=layer_name, layer_idx=layer_idx)
+    channels = find_option(block, "channels", int, NET_CH_DEF, loud=True, layer_name=layer_name, layer_idx=layer_idx)
     momentum = find_option(block, "momentum", float, NET_MOMEN_DEF)
     decay = find_option(block, "decay", float, NET_DECAY_DEF)
     angle = find_option(block, "angle", float, NET_ANG_DEF)
     saturation = find_option(block, "saturation", float, NET_SATUR_DEF)
     exposure = find_option(block, "exposure", float, NET_EXPOS_DEF)
     hue = find_option(block, "hue", float, NET_HUE_DEF)
-    lr = find_option(block, "learning_rate", float, NET_LR_DEF, loud=True)
+    lr = find_option(block, "learning_rate", float, NET_LR_DEF, loud=True, layer_name=layer_name, layer_idx=layer_idx)
     burn_in = find_option(block, "burn_in", int, NET_BURN_DEF)
-    max_batches = find_option(block, "max_batches", int, NET_MAX_BAT_DEF, loud=True)
-    policy = find_option(block, "policy", str, NET_POL_DEF, loud=True)
+    max_batches = find_option(block, "max_batches", int, NET_MAX_BAT_DEF, loud=True, layer_name=layer_name, layer_idx=layer_idx)
+    policy = find_option(block, "policy", str, NET_POL_DEF, loud=True, layer_name=layer_name, layer_idx=layer_idx)
     steps = find_option_list(block, "steps", int, NET_STEP_DEF)
     scales = find_option_list(block, "scales", float, NET_SCALE_DEF)
-    mosaic = find_option(block, "mosaic", bool, NET_MOSAIC_DEF)
+    mosaic = find_option(block, "mosaic", int, NET_MOSAIC_DEF)
     resize_step = find_option(block, "resize_step", int, NET_RESIZE_STEP_DEF)
 
     net_block = NetBlock(
@@ -370,7 +387,6 @@ def parse_net_block(block):
 
     return net_block
 
-
 # parse_convolutional_block
 def parse_convolutional_block(block, in_channels, layer_idx):
     """
@@ -381,53 +397,21 @@ def parse_convolutional_block(block, in_channels, layer_idx):
     ----------
     """
 
-    conv_layer = None
+    layer_name = "ConvolutionalLayer"
 
-    batch_normalize = CONV_BN
-    filters = None
-    size = None
-    stride = None
-    pad = CONV_PAD
-    activation = CONV_ACTIV
+    filters = find_option(block, "filters", int, CONV_FILT_DEF, loud=True, layer_name=layer_name, layer_idx=layer_idx)
+    size = find_option(block, "size", int, CONV_SIZE_DEF, loud=True, layer_name=layer_name, layer_idx=layer_idx)
+    stride = find_option(block, "stride", int, CONV_STRIDE_DEF)
+    batch_normalize = find_option(block, "batch_normalize", int, CONV_BN_DEF)
+    pad = find_option(block, "pad", int, CONV_PAD_DEF)
+    activation = find_option(block, "activation", str, CONV_ACTIV_DEF, loud=True, layer_name=layer_name, layer_idx=layer_idx)
 
-    error_state = False
+    conv_layer = ConvolutionalLayer(
+        in_channels, filters=filters, size=size, stride=stride, batch_normalize=batch_normalize,
+        pad=pad, activation=activation
+    )
 
-    # Filling in values
-    for k, v in block.items():
-        if(k == DARKNET_CONFIG_BLOCK_TYPE):
-            continue # Ignore this key
-        elif(k == "batch_normalize"):
-            batch_normalize = bool(int(v))
-        elif(k == "filters"):
-            out_channels = int(v)
-        elif(k == "size"):
-            size = int(v)
-        elif(k == "stride"):
-            stride = int(v)
-        elif(k == "pad"):
-            pad = bool(int(v))
-        elif(k == "activation"):
-            activation = v
-        else:
-            print("parse_convolutional_block: Error on layer_idx", layer_idx, ": Unrecognized block key:", k)
-            error_state = True
-
-    # Validation
-    if(out_channels is None):
-        print("parse_convolutional_block: Error: Missing 'filters' entry")
-        error_state = True
-    if(size is None):
-        print("parse_convolutional_block: Error: Missing 'size' entry")
-        error_state = True
-    if(stride is None):
-        print("parse_convolutional_block: Error: Missing 'stride' entry")
-        error_state = True
-
-    # Setting up ConvolutionalLayer
-    if(not error_state):
-        conv_layer = ConvolutionalLayer(in_channels, out_channels, size, stride, batch_normalize, pad, activation)
-
-    return conv_layer, out_channels
+    return conv_layer, filters
 
 # parse_maxpool_block
 def parse_maxpool_block(block, layer_idx):
@@ -439,38 +423,13 @@ def parse_maxpool_block(block, layer_idx):
     ----------
     """
 
-    maxpool_layer = None
+    layer_name = "MaxpoolLayer"
 
-    size = None
-    stride = None
+    size = find_option(block, "size", int, MAXPL_SIZE_DEF, loud=True, layer_name=layer_name, layer_idx=layer_idx)
+    stride = find_option(block, "stride", int, MAXPL_STRIDE_DEF, loud=True, layer_name=layer_name, layer_idx=layer_idx)
+    padding = find_option(block, "padding", int, default=size-1)
 
-    error_state = False
-
-    # Filling in values
-    for k, v in block.items():
-        if(k == DARKNET_CONFIG_BLOCK_TYPE):
-            continue # Ignore this key
-        elif(k == "size"):
-            size = int(v)
-        elif(k == "stride"):
-            stride = int(v)
-        else:
-            print("parse_maxpool_block: Error on layer_idx", layer_idx, ": Unrecognized block key:", k)
-            error_state = True
-
-    # end for
-
-    # Validation
-    if(size is None):
-        print("parse_maxpool_block: Error on layer_idx", layer_idx, ": Missing 'size' entry")
-        error_state = True
-    if(stride is None):
-        print("parse_maxpool_block: Error on layer_idx", layer_idx, ": Missing 'stride' entry")
-        error_state = True
-
-    # Setting up MaxpoolLayer
-    if(not error_state):
-        maxpool_layer = MaxpoolLayer(size, stride)
+    maxpool_layer = MaxpoolLayer(size=size, stride=stride, padding=padding)
 
     return maxpool_layer
 
@@ -481,41 +440,30 @@ def parse_route_block(block, layer_output_channels, layer_idx):
     Author: Damon Gwinn (gwinndr)
     ----------
     - Parses route block into a RouteLayer
+    - layer_output_channels should be a list containing all output channels up to this current layer
     ----------
     """
 
-    route_layer = None
-    out_channels = None
+    layer_name = "RouteLayer"
+    out_channels = 0
 
-    layers = None
+    layers = find_option_list(block, "layers", int, default=None)
 
     error_state = False
 
-    # Filling in values
-    for k, v in block.items():
-        if(k == DARKNET_CONFIG_BLOCK_TYPE):
-            continue # Ignore this key
-        elif(k == "layers"):
-            layers = [int(l.strip()) for l in v.split(",")]
-        else:
-            print("parse_route_block: Error on layer_idx", layer_idx, ": Unrecognized block key:", k)
-            error_state = True
-
-    # end for
-
     # Validation
     if(layers is None):
-        print("parse_route_block: Error on layer_idx", layer_idx, ": Missing 'layers' entry")
+        print("route: Error on layer_idx", layer_idx, ": Missing required 'layers' entry")
         error_state = True
 
     # Setting up RouteLayer
     if(not error_state):
         route_layer = RouteLayer(layers)
-        out_channels = 0
+
         for l in layers:
             out_channels += layer_output_channels[l]
-
-    # end if
+    else:
+        route_layer = None
 
     return route_layer, out_channels
 
@@ -529,35 +477,23 @@ def parse_shortcut_block(block, layer_idx):
     ----------
     """
 
-    shortcut_layer = None
+    layer_name = "ShortcutLayer"
 
-    from_entry = None
-    activation = SHCT_ACTIV
+    from_layer = find_option(block, "from", int, default=None)
+    activation = find_option(block, "activation", str, SHCT_ACTIV_DEF)
 
     error_state = False
 
-    # Filling in values
-    for k, v in block.items():
-        if(k == DARKNET_CONFIG_BLOCK_TYPE):
-            continue # Ignore this key
-        elif(k == "from"):
-            from_entry = int(v)
-        elif(k == "activation"):
-            activation = v
-        else:
-            print("parse_shortcut_block: Error on layer_idx", layer_idx, ": Unrecognized block key:", k)
-            error_state = True
-
-    # end for
-
     # Validation
-    if(from_entry is None):
-        print("parse_shortcut_block: Error on layer_idx", layer_idx, ": Missing 'from' entry")
+    if(from_layer is None):
+        print("shortcut: Error on layer_idx", layer_idx, ": Missing required 'from' entry")
         error_state = True
 
     # Setting up ShortcutLayer
     if(not error_state):
-        shortcut_layer = ShortcutLayer(from_entry, activation)
+        shortcut_layer = ShortcutLayer(from_layer, activation=activation)
+    else:
+        shortcut_layer = None
 
     return shortcut_layer
 
@@ -571,32 +507,11 @@ def parse_upsample_block(block, layer_idx):
     ----------
     """
 
-    upsample_layer = None
+    layer_name = "UpsampleLayer"
 
-    stride = None
+    stride = find_option(block, "stride", int, UPSAMP_STRIDE_DEF)
 
-    error_state = False
-
-    # Filling in values
-    for k, v in block.items():
-        if(k == DARKNET_CONFIG_BLOCK_TYPE):
-            continue # Ignore this key
-        elif(k == "stride"):
-            stride = int(v)
-        else:
-            print("parse_upsample_block: Error on layer_idx", layer_idx, ": Unrecognized block key:", k)
-            error_state = True
-
-    # end for
-
-    # Validation
-    if(stride is None):
-        print("parse_upsample_block: Error on layer_idx", layer_idx, ": Missing 'stride' entry")
-        error_state = True
-
-    # Setting up UpsampleLayer
-    if(not error_state):
-        upsample_layer = UpsampleLayer(stride)
+    upsample_layer = UpsampleLayer(stride=stride)
 
     return upsample_layer
 
@@ -610,113 +525,70 @@ def parse_yolo_block(block, layer_idx):
     ----------
     """
 
+    layer_name = "YoloLayer"
+
     yolo_layer = None
 
-    mask = None
-    anchors = None
-    classes = None
-    num = None
-    jitter = YOLO_JITTER
-    ignore_thresh = None
-    truth_thresh = None
-    random = YOLO_RANDOM
-    scale_xy = YOLO_SCALEXY
-    iou_thresh = YOLO_IOU_THRESH
-    cls_norm = YOLO_CLS_NORM
-    iou_norm = YOLO_IOU_NORM
-    iou_loss = YOLO_IOU_LOSS
-    nms_kind = YOLO_NMS_KIND
-    beta_nms = YOLO_BETA_NMS
-    max_delta = YOLO_MAX_DELTA
+    mask = find_option_list(block, "mask", int, default=None)
+    anchors = find_option_list(block, "anchors", int, default=None)
+    classes = find_option(block, "classes", int, YOLO_NCLS_DEF, loud=True, layer_name=layer_name, layer_idx=layer_idx)
+    num = find_option(block, "num", int, YOLO_NUM_DEF, loud=True, layer_name=layer_name, layer_idx=layer_idx)
+    jitter = find_option(block, "jitter", float, YOLO_JITTER_DEF)
+    ignore_thresh = find_option(block, "ignore_thresh", float, YOLO_IGNORE_DEF, loud=True, layer_name=layer_name, layer_idx=layer_idx)
+    truth_thresh = find_option(block, "truth_thresh", float, YOLO_TRUTH_DEF)
+    random = find_option(block, "random", float, YOLO_RANDOM_DEF)
+    scale_xy = find_option(block, "scale_x_y", float, YOLO_SCALEXY_DEF)
+    iou_thresh = find_option(block, "iou_thresh", float, YOLO_IOU_THRESH_DEF)
+    cls_norm = find_option(block, "cls_normalizer", float, YOLO_CLS_NORM_DEF)
+    iou_norm = find_option(block, "iou_normalizer", float, YOLO_IOU_NORM_DEF)
+    iou_loss = find_option(block, "iou_loss", str, YOLO_IOU_LOSS_DEF)
+    nms_kind = find_option(block, "nms_kind", str, YOLO_NMS_KIND_DEF)
+    beta_nms = find_option(block, "beta_nms", float, YOLO_BETA_NMS_DEF)
+    max_delta = find_option(block, "max_delta", float, YOLO_MAX_DELTA_DEF)
 
     error_state = False
 
-    # Filling in values
-    for k, v in block.items():
-        if(k == DARKNET_CONFIG_BLOCK_TYPE):
-            continue # Ignore this key
-        elif(k == "mask"):
-            mask = [int(m) for m in v.split(",")]
-        elif(k == "classes"):
-            classes = int(v)
-        elif(k == "num"):
-            num = int(v)
-        elif(k == "jitter"):
-            jitter = float(v)
-        elif(k == "ignore_thresh"):
-            ignore_thresh = float(v)
-        elif(k == "truth_thresh"):
-            truth_thresh = float(v)
-        elif(k == "random"):
-            random = bool(int(v))
-        elif(k == "scale_x_y"):
-            scale_xy = float(v)
-        elif(k == "iou_thresh"):
-            iou_thresh = float(v)
-        elif(k == "cls_normalizer"):
-            cls_norm = float(v)
-        elif(k == "iou_normalizer"):
-            iou_norm = float(v)
-        elif(k == "iou_loss"):
-            iou_loss = v
-        elif(k == "nms_kind"):
-            nms_kind = v
-        elif(k == "beta_nms"):
-            beta_nms = float(v)
-        elif(k == "max_delta"):
-            beta_nms = int(v)
-        elif(k == "anchors"):
-            anchors_temp = [int(m) for m in v.split(",")]
-            if(len(anchors_temp) % 2 != 0):
-                print("parse_yolo_block: Error on layer_idx", layer_idx, ": All anchors must have width and height")
-                return None
+    # Validation
+    if(mask is None):
+        print("yolo: Error on layer_idx", layer_idx, ": Missing 'mask' entry")
+        error_state = True
+    if(anchors is None):
+        print("yolo: Error on layer_idx", layer_idx, ": Missing 'anchors' entry")
+        error_state = True
 
+    # Validating anchors
+    if(not error_state):
+        if(len(anchors) % 2 != 0):
+            print("yolo: Error on layer_idx", layer_idx, ": All anchors must have width and height")
+            error_state = True
+        else:
             i = 0
+            anchors_temp = anchors
             anchors = []
             while i < len(anchors_temp):
                 anchor = (anchors_temp[i], anchors_temp[i+1])
                 anchors.append(anchor)
-
                 i += 2
 
-        else:
-            print("parse_yolo_block: Error on layer_idx", layer_idx, ": Unrecognized block key:", k)
-            error_state = True
-
-    # end for
-
-    # Validation
-    if(mask is None):
-        print("parse_yolo_block: Error on layer_idx", layer_idx, ": Missing 'mask' entry")
-        error_state = True
-    if(anchors is None):
-        print("parse_yolo_block: Error on layer_idx", layer_idx, ": Missing 'anchors' entry")
-        error_state = True
-    if(classes is None):
-        print("parse_yolo_block: Error on layer_idx", layer_idx, ": Missing 'classes' entry")
-        error_state = True
-    if(num is None):
-        print("parse_yolo_block: Error on layer_idx", layer_idx, ": Missing 'num' entry")
-        error_state = True
-    if(ignore_thresh is None):
-        print("parse_yolo_block: Error on layer_idx", layer_idx, ": Missing 'ignore_thresh' entry")
-        error_state = True
-
-    # Anchor mask validation
-    if(not error_state):
-        if(num != len(anchors)):
-            print("parse_yolo_block: Error on layer_idx", layer_idx, ": 'num' entry must equal number of anchors")
-            error_state = True
-        else:
+            # Verifying anchor and mask integrity
+            if(num != len(anchors)):
+                print("yolo: Error on layer_idx", layer_idx, ": 'num' entry must equal number of anchors")
+                error_state = True
             for m in mask:
-                if(m < 0 or m >= num):
-                    print("parse_yolo_block: Error on layer_idx", layer_idx, ": Mask index is invalid for given anchors")
+                if((m < 0) or (m >= num)):
+                    print("yolo: Error on layer_idx", layer_idx, ": Mask index", m, "is invalid for given num entry")
+                    error_state = True
 
+    # end if
 
     # Setting up YoloLayer
     if(not error_state):
-        yolo_layer = YoloLayer(anchors, mask, classes, ignore_thresh, truth_thresh, random,
-                                jitter, scale_xy, iou_thresh, cls_norm, iou_norm, iou_loss,
-                                nms_kind, beta_nms, max_delta)
+        yolo_layer = YoloLayer(
+            anchors, mask, n_classes=classes, ignore_thresh=ignore_thresh, truth_thresh=truth_thresh,
+            random=random, jitter=jitter, scale_xy=scale_xy, iou_thresh=iou_thresh, cls_norm=cls_norm,
+            iou_norm=iou_norm, iou_loss=iou_loss, nms_kind=nms_kind, beta_nms=beta_nms, max_delta=max_delta
+        )
+    else:
+        yolo_layer = None
 
     return yolo_layer

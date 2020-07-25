@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from utilities.constants import INPUT_CHANNEL_DIM
+from utilities.constants import *
 
 # RouteLayer
 class RouteLayer(nn.Module):

@@ -12,13 +12,15 @@ class ConvolutionalLayer(nn.Module):
     Author: Damon Gwinn (gwinndr)
     ----------
     - A darknet Convolutional Layer
-    - If padding is true, zero padding is applied as (size - 1) // 2 to preserve dimensions
+    - If pad is true, zero pad is applied as (size - 1) // 2 to preserve dimensions
     ----------
     """
 
     # __init__
-    def __init__(self, in_channels, out_channels, size, stride, batch_normalize=CONV_BN,
-            padding=CONV_PAD, activation=CONV_ACTIV):
+    def __init__(self,
+        in_channels, filters=CONV_FILT_DEF, size=CONV_SIZE_DEF, stride=CONV_STRIDE_DEF,
+        batch_normalize=CONV_BN_DEF, pad=CONV_PAD_DEF, activation=CONV_ACTIV_DEF):
+
         super(ConvolutionalLayer, self).__init__()
 
         self.has_learnable_params = True
@@ -28,13 +30,13 @@ class ConvolutionalLayer(nn.Module):
         self.size = size
         self.stride = stride
         self.in_channels = in_channels
-        self.out_channels = out_channels
+        self.filters = filters
         self.batch_normalize = batch_normalize
         self.activation = activation
 
         self.sequential = nn.Sequential()
 
-        if(padding):
+        if(pad):
             self.padding = (self.size - 1) // 2
         else:
             self.padding = 0
@@ -42,12 +44,12 @@ class ConvolutionalLayer(nn.Module):
         # Only one bias term which is applied to conv if no bn, bn otherwise
         bias = not batch_normalize
 
-        conv = nn.Conv2d(in_channels, out_channels, size, stride=stride, padding=self.padding, bias=bias)
+        conv = nn.Conv2d(in_channels, filters, size, stride=stride, padding=self.padding, bias=bias)
         self.sequential.add_module("conv_2d", conv)
 
         # Batch Normalizations
         if(batch_normalize):
-            bn = nn.BatchNorm2d(out_channels)
+            bn = nn.BatchNorm2d(filters)
             self.sequential.add_module("batch_norm", bn)
 
         # Leaky Relu
@@ -120,7 +122,7 @@ class ConvolutionalLayer(nn.Module):
             bn_running_mean = bn_running_mean.view_as(bn.running_mean.data)
             bn_running_var = bn_running_var.view_as(bn.running_var.data)
             # print(":")
-            # print(self.out_channels)
+            # print(self.filters)
             # print(bn_bias.shape)
             # print(bn_weights.shape)
             # print(bn_running_mean.shape)
@@ -164,4 +166,4 @@ class ConvolutionalLayer(nn.Module):
 
         return \
             "CONV: size: %d  stride: %d  in_c: %d  out_c: %d  bn: %d  pad: %d  activ: %s" % \
-            (self.size, self.stride, self.in_channels, self.out_channels, self.batch_normalize, self.padding, self.activation)
+            (self.size, self.stride, self.in_channels, self.filters, self.batch_normalize, self.padding, self.activation)
