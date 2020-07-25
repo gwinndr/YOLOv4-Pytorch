@@ -371,6 +371,7 @@ def parse_net_block(block):
     hue = find_option(block, "hue", float, NET_HUE_DEF)
     lr = find_option(block, "learning_rate", float, NET_LR_DEF, loud=True, layer_name=layer_name, layer_idx=layer_idx)
     burn_in = find_option(block, "burn_in", int, NET_BURN_DEF)
+    power = find_option(block, "power", float, NET_POW_DEF)
     max_batches = find_option(block, "max_batches", int, NET_MAX_BAT_DEF, loud=True, layer_name=layer_name, layer_idx=layer_idx)
     policy = find_option(block, "policy", str, NET_POL_DEF, loud=True, layer_name=layer_name, layer_idx=layer_idx)
     steps = find_option_list(block, "steps", int, NET_STEP_DEF)
@@ -381,7 +382,7 @@ def parse_net_block(block):
     net_block = NetBlock(
         batch=batch, subdivisions=subdiv, width=width, height=height, channels=channels,
         momentum=momentum, decay=decay, angle=angle, saturation=saturation, exposure=exposure,
-        hue=hue, lr=lr, burn_in=burn_in, max_batches=max_batches, policy=policy, steps=steps,
+        hue=hue, lr=lr, burn_in=burn_in, power=power, max_batches=max_batches, policy=policy, steps=steps,
         scales=scales, mosaic=mosaic, resize_step=resize_step
     )
 
