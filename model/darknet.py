@@ -43,20 +43,13 @@ class Darknet(nn.Module):
         ----------
         """
 
-        if(self.training and (anns is None)):
-            print("Darknet: Error: In training mode without giving annotations")
-            return None
-
         model_out = []
         saved_outputs = []
         input_dim = x.shape[INPUT_H_DIM]
 
         for i, module in enumerate(self.layer_modules):
             if(module.is_output_layer):
-                if(self.training):
-                    model_out.append(module(x, input_dim, anns=anns))
-                else:
-                    model_out.append(module(x, input_dim))
+                model_out.append(module(x, input_dim, anns=anns))
 
             elif(module.requires_layer_outputs):
                 x = module(x, saved_outputs)
@@ -67,7 +60,7 @@ class Darknet(nn.Module):
             # Saving outputs
             saved_outputs.append(x)
 
-        if(not self.training):
+        if(anns is None):
             model_out = torch.cat(model_out, dim=PREDS_N_PREDS_DIM)
 
         return model_out
