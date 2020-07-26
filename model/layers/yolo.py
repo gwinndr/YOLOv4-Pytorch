@@ -149,7 +149,7 @@ class YoloLayer(nn.Module):
         # Loss objects
         mse = nn.MSELoss(reduction = "mean")
         sse = nn.MSELoss(reduction = "sum")
-        loss_zero = torch.zeros((1,), dtype=torch.float32, device=device, requires_grad=True)
+        loss_zero = torch.tensor(0.0, dtype=torch.float32, device=device, requires_grad=True)
 
         tot_bbox_loss = 0.0
         tot_obj_loss = 0.0

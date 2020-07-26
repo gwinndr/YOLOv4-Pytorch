@@ -49,7 +49,8 @@ class Darknet(nn.Module):
 
         for i, module in enumerate(self.layer_modules):
             if(module.is_output_layer):
-                model_out.append(module(x, input_dim, anns=anns))
+                x = module(x, input_dim, anns=anns)
+                model_out.append(x)
 
             elif(module.requires_layer_outputs):
                 x = module(x, saved_outputs)
@@ -62,6 +63,8 @@ class Darknet(nn.Module):
 
         if(anns is None):
             model_out = torch.cat(model_out, dim=PREDS_N_PREDS_DIM)
+        else:
+            model_out = sum(model_out) / len(model_out)
 
         return model_out
 
