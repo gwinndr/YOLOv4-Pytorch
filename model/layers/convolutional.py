@@ -154,6 +154,36 @@ class ConvolutionalLayer(nn.Module):
 
         return cur_pos
 
+    # write_weights
+    def write_weights(self, o_stream):
+        """
+        ----------
+        Author: Damon Gwinn (gwinndr)
+        ----------
+        - Saves weights to o_stream
+        - o_stream should be an open stream for writing binary ("wb" mode)
+        ----------
+        """
+
+        conv = self.sequential[0]
+
+        if(self.batch_normalize):
+            bn = self.sequential[1]
+
+            bn.bias.data.cpu().numpy().tofile(o_stream)
+            bn.weight.data.cpu().numpy().tofile(o_stream)
+            bn.running_mean.data.cpu().numpy().tofile(o_stream)
+            bn.running_var.data.cpu().numpy().tofile(o_stream)
+
+        # Just a bias for convolutional
+        else:
+            conv.bias.data.cpu().numpy().tofile(o_stream)
+
+        # Write weights for conv_2d
+        conv.weight.data.cpu().numpy().tofile(o_stream)
+
+        return
+
     # to_string
     def to_string(self):
         """
