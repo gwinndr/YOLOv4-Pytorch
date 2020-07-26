@@ -146,6 +146,11 @@ class YoloLayer(nn.Module):
         # (batch, grid_dim, grid_dim, n_masked_anchors, attrs_per_anchor)
         x = x.permute(0,3,4,1,2).contiguous()
 
+        # Loss objects
+        mse = nn.MSELoss(reduction = "mean")
+        sse = nn.MSELoss(reduction = "sum")
+        loss_zero = torch.zeros((1,), dtype=torch.float32, device=device, requires_grad=True)
+
         tot_bbox_loss = 0.0
         tot_obj_loss = 0.0
         tot_cls_loss = 0.0
@@ -167,71 +172,78 @@ class YoloLayer(nn.Module):
 
             # Following do not require gradients
             with torch.no_grad():
+                # Only doing responsible stuff if there are any annotations
+                if(len(batch_anns) > 0):
+                    # Indexes for responsible anchors (h,w,a) and their corresponding targets
+                    resp_pred_idxs, resp_anns = self.responsible_predictions(all_anchors, batch_anns)
+                    resp_pred_h, resp_pred_w, resp_pred_a = resp_pred_idxs
 
-                # Indexes for responsible anchors (h,w,a) and their corresponding targets
-                resp_pred_idxs, resp_anns = self.responsible_predictions(all_anchors, batch_anns)
-                resp_pred_h, resp_pred_w, resp_pred_a = resp_pred_idxs
+                    # ious between predictions and annotations for masks
+                    x_ann_ious = self.iou_preds_anns(batch_x, batch_anns, grid_dim, pred_anchors)
 
-                # ious between predictions and annotations for masks
-                x_ann_ious = self.iou_preds_anns(batch_x, batch_anns, grid_dim, pred_anchors)
+                    # Ignore mask, True if predictions overlap a ground truth by more than ignore threshold
+                    ignore_mask = x_ann_ious > self.ignore_thresh
+                    ignore_mask = ignore_mask.sum(dtype=torch.bool, dim=1) # logical_or along annotation dim
+                    ignore_mask = ignore_mask.view(grid_dim, grid_dim, n_pred_anchors)
 
-                # Ignore mask, True if predictions overlap a ground truth by more than ignore threshold
-                ignore_mask = x_ann_ious > self.ignore_thresh
-                ignore_mask = ignore_mask.sum(dtype=torch.bool, dim=1) # logical_or along annotation dim
-                ignore_mask = ignore_mask.view(grid_dim, grid_dim, n_pred_anchors)
-
-                # Responsible predictions are always ignored since they have a separate loss calculation
-                ignore_mask[resp_pred_h, resp_pred_w, resp_pred_a] = True
+                    # Responsible predictions are always ignored since they have a separate loss calculation
+                    ignore_mask[resp_pred_h, resp_pred_w, resp_pred_a] = True
 
             # end torch.no_grad()
 
-            # Loss objects
-            mse = nn.MSELoss(reduction = "mean")
-            sse = nn.MSELoss(reduction = "sum")
+            # Responsible loss is 0 if no annotations
+            if(len(batch_anns) > 0):
+                # Transforming responsible predictions
+                resp_preds = batch_x[resp_pred_h, resp_pred_w, resp_pred_a]
+                resp_ancs = pred_anchors[resp_pred_a]
+                self.yolo_transform(resp_preds, resp_ancs)
+                resp_preds[..., YOLO_TX] += resp_pred_w
+                resp_preds[..., YOLO_TY] += resp_pred_h
 
-            # Transforming responsible predictions
-            resp_preds = batch_x[resp_pred_h, resp_pred_w, resp_pred_a]
-            resp_ancs = pred_anchors[resp_pred_a]
-            self.yolo_transform(resp_preds, resp_ancs)
-            resp_preds[..., YOLO_TX] += resp_pred_w
-            resp_preds[..., YOLO_TY] += resp_pred_h
+                n_resp = len(resp_preds)
 
-            n_resp = len(resp_preds)
+                # Setting up targets
+                target_zeros = torch.zeros(resp_preds.shape[:-1], dtype=torch.float32, device=device, requires_grad=False)
+                target_ones = target_zeros + 1.0
 
-            # Setting up targets
-            target_zeros = torch.zeros(resp_preds.shape[:-1], dtype=torch.float32, device=device, requires_grad=False)
-            target_ones = target_zeros + 1.0
+                ##### BBOX LOSS #####
+                resp_pred_boxes = predictions_to_bboxes(resp_preds)
+                resp_anns_boxes = resp_anns[..., ANN_BBOX_X1:ANN_BBOX_Y2+1]
+                bbox_cious = bbox_ciou(resp_pred_boxes, resp_anns_boxes)
+                bbox_loss = sse(bbox_cious, target_ones)
 
-            ##### BBOX LOSS #####
-            resp_pred_boxes = predictions_to_bboxes(resp_preds)
-            resp_anns_boxes = resp_anns[..., ANN_BBOX_X1:ANN_BBOX_Y2+1]
-            bbox_cious = bbox_ciou(resp_pred_boxes, resp_anns_boxes)
-            bbox_loss = sse(bbox_cious, target_ones)
+                ##### OBJECTNESS LOSS #####
+                pred_obj = resp_preds[..., YOLO_OBJ]
+                resp_obj_loss = sse(pred_obj, target_ones)
 
-            ##### OBJECTNESS LOSS #####
-            pred_obj = resp_preds[..., YOLO_OBJ]
-            resp_obj_loss = sse(pred_obj, target_ones)
+                ##### CLASSIFICATION LOSS #####
+                pred_cls = resp_preds[..., YOLO_CLASS_START:]
+                resp_anns_cls = resp_anns[..., ANN_BBOX_CLASS].type(torch.long)
 
-            ##### CLASSIFICATION LOSS #####
-            pred_cls = resp_preds[..., YOLO_CLASS_START:]
-            resp_anns_cls = resp_anns[..., ANN_BBOX_CLASS].type(torch.long)
+                target_cls = torch.zeros(pred_cls.shape, dtype=torch.float32, device=device, requires_grad=False)
+                resp_idxs = torch.arange(start=0, end=n_resp, step=1, device=device) # just to help index properly
+                target_cls[resp_idxs, resp_anns_cls] = 1.0
 
-            target_cls = torch.zeros(pred_cls.shape, dtype=torch.float32, device=device, requires_grad=False)
-            resp_idxs = torch.arange(start=0, end=n_resp, step=1, device=device) # just to help index properly
-            target_cls[resp_idxs, resp_anns_cls] = 1.0
-
-            cls_loss = sse(pred_cls, target_cls)
+                cls_loss = sse(pred_cls, target_cls)
+            else:
+                bbox_loss = loss_zero
+                resp_obj_loss = loss_zero
+                cls_loss = loss_zero
+                n_resp = 0
 
             ##### ZERO-OBJECTNESS LOSS #####
             # Ignored predictions are not penalized
-            non_resp_objs = batch_x[~ignore_mask][..., YOLO_OBJ]
+            if(len(batch_anns) > 0):
+                non_resp_objs = batch_x[~ignore_mask][..., YOLO_OBJ]
+            else:
+                non_resp_objs = batch_x[..., YOLO_OBJ]
+
             non_resp_objs = torch.sigmoid(non_resp_objs)
             target_zeros = torch.zeros(non_resp_objs.shape, dtype=torch.float32, device=device)
 
             non_resp_obj_loss = sse(non_resp_objs, target_zeros)
 
             # Fixing NaNs
-            loss_zero = torch.zeros((1,), dtype=torch.float32, device=device, requires_grad=True)
             if(torch.isnan(bbox_loss)):
                 bbox_loss = loss_zero
             if(torch.isnan(resp_obj_loss)):
@@ -255,9 +267,9 @@ class YoloLayer(nn.Module):
 
         total_loss = avg_bbox_loss + avg_obj_loss + avg_cls_loss
 
-        print("bbox_loss: %.4f  obj_loss: %.4f  cls_loss: %.4f  tot_loss: %.4f  batch_size: %d  count: %d" % \
-                (avg_bbox_loss, avg_obj_loss, avg_cls_loss, total_loss, batch_num, tot_n_resp))
-        print("")
+        # print("bbox_loss: %.4f  obj_loss: %.4f  cls_loss: %.4f  tot_loss: %.4f  batch_size: %d  count: %d" % \
+        #         (avg_bbox_loss, avg_obj_loss, avg_cls_loss, total_loss, batch_num, tot_n_resp))
+        # print("")
 
         return total_loss
 
