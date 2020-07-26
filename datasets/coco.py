@@ -69,7 +69,7 @@ class CocoDataset(Dataset):
 
         n_anns = len(anns_partial)
         if(n_anns > self.max_anns):
-            print("CocoDataset: Warning on image id %d, exceeds maximum annotations, any extra will be cut off")
+            print("CocoDataset: Warning on image id %d, exceeds maximum annotations, any extra will be cut off" % img_id)
             n_anns = self.max_anns
 
         # Filling up to max anns
@@ -135,6 +135,18 @@ class CocoDataset(Dataset):
 
         return darknet_anns
 
+    # resize
+    def resize(self, new_dim):
+        """
+        ----------
+        Author: Damon Gwinn (gwinndr)
+        ----------
+        - Resizes the input image to the specified dimension
+        ----------
+        """
+
+        self.input_dim = new_dim
+
 # coco_evaluate_bbox
 def coco_evaluate_bbox(coco_dataset, model, network_dim, obj_thresh, letterbox, max_imgs=0):
     """
@@ -153,9 +165,6 @@ def coco_evaluate_bbox(coco_dataset, model, network_dim, obj_thresh, letterbox, 
 
     model.eval()
     with torch.no_grad():
-        yolo_layers = model.get_yolo_layers()
-        imgs_done = 0
-
         model_dts = []
         all_img_ids = []
         for i in range(max_imgs):
@@ -185,7 +194,7 @@ def coco_evaluate_bbox(coco_dataset, model, network_dim, obj_thresh, letterbox, 
             stats = coco_evaluator.stats
         else:
             print("No detections, everything is 0...")
-            stats = [0] * 12
+            stats = [0] * N_COCO_STATS
 
         print("")
 
