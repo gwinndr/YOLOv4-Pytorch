@@ -74,7 +74,7 @@ def main():
         val_dataset = CocoDataset(image_dir, input_dim=network_dim, letterbox=letterbox, annotation_file=ann_file)
         print("")
 
-        coco_evaluate_bbox(val_dataset, model, network_dim, obj_thresh, letterbox, max_imgs)
+        coco_evaluate_bbox(val_dataset, model, obj_thresh, max_imgs=max_imgs)
 
     return
 

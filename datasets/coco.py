@@ -148,7 +148,7 @@ class CocoDataset(Dataset):
         self.input_dim = new_dim
 
 # coco_evaluate_bbox
-def coco_evaluate_bbox(coco_dataset, model, network_dim, obj_thresh, letterbox, max_imgs=0):
+def coco_evaluate_bbox(coco_dataset, model, obj_thresh, max_imgs=0):
     """
     ----------
     Author: Damon Gwinn (gwinndr)
@@ -162,6 +162,9 @@ def coco_evaluate_bbox(coco_dataset, model, network_dim, obj_thresh, letterbox, 
     # Evaluate all images in the given dataset if max_imgs <= 0
     if(max_imgs <= 0):
         max_imgs = len(coco_dataset)
+
+    network_dim = coco_dataset.input_dim
+    letterbox = coco_dataset.letterbox
 
     model.eval()
     with torch.no_grad():
