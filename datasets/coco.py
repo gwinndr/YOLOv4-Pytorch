@@ -147,6 +147,19 @@ class CocoDataset(Dataset):
 
         self.input_dim = new_dim
 
+    # get_dim
+    def get_dim(self):
+        """
+        ----------
+        Author: Damon Gwinn (gwinndr)
+        ----------
+        - Gets the input dimensions (h x w)
+        ----------
+        """
+
+        return (self.input_dim, self.input_dim)
+
+
 # coco_evaluate_bbox
 def coco_evaluate_bbox(coco_dataset, model, obj_thresh, max_imgs=0):
     """

@@ -14,19 +14,30 @@ def parse_train_args():
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("-train_images", type=str, default="./COCO/2017/train2017/", help="Folder containing training images")
-    parser.add_argument("-train_anns", type=str, default="./COCO/2017/annotations/instances_train2017.json", help="File containing bbox annotations for training images")
+    parser.add_argument("-results", type=str, default="./results/default", help="Folder to store model results and weights")
+    parser.add_argument("-epoch_mod", type=int, default=1, help="Defines how many epochs must occur before model weights are saved. Defaults to every epoch. Overidden if --only_save_last")
+    parser.add_argument("--only_save_last", action="store_true", help="Only save the weights after the very last batch (not recommended)")
 
-    parser.add_argument("-val_images", type=str, default="./COCO/2017/val2017/", help="Folder containing validation images")
-    parser.add_argument("-val_anns", type=str, default="./COCO/2017/annotations/instances_val2017.json", help="File containing bbox annotations for validation images")
+    parser.add_argument("-train_imgs", type=str, default="D:/Datasets/COCO/2017/train2017/", help="Folder containing training images")
+    parser.add_argument("-train_anns", type=str, default="D:/Datasets/COCO/2017/annotations/instances_train2017.json", help="File containing bbox annotations for training images")
+    
+    parser.add_argument("-val_imgs", type=str, default="D:/Datasets/COCO/2017/val2017/", help="Folder containing validation images")
+    parser.add_argument("-val_anns", type=str, default="D:/Datasets/COCO/2017/annotations/instances_val2017.json", help="File containing bbox annotations for validation images")
+    parser.add_argument("-max_imgs", type=int, default=-1, help="Specifies upper bound on the number of validation images processed. If <= 0, all validation images are processed.")
+
+    parser.add_argument("--batch_csv", action="store_true", help="Reports batch loss with a csv file")
+    parser.add_argument("--epoch_csv", action="store_true", help="Reports epoch loss with a csv file")
+    parser.add_argument("--tensorboard", action="store_true", help="Report results with tensorboard")
 
     parser.add_argument("-cfg", type=str, default="./configs/yolov4.cfg", help="Yolo configuration file")
-    parser.add_argument("-weights", type=str, default="./weights/yolov4.weights", help="Yolo pre-trained weights file")
+    parser.add_argument("-weights", type=str, default="./weights/csdarknet53-omega.conv.105", help="Yolo pre-trained weights file. Can also be weights from a training in progress.")
 
     parser.add_argument("-obj_thresh", type=float, default=OBJ_THRESH_DEFAULT, help="Confidence threshold for filtering out predictions (validation)")
 
+    parser.add_argument("--no_ask", action="store_true", help="Don't ask when you're about to write to a results dir that already exists (your funeral).")
     parser.add_argument("--print_network", action="store_true", help="Print out each layer in the darknet model with their hyperparameters")
     parser.add_argument("--force_cpu", action="store_true", help="Forces the model to run on the cpu regardless of cuda status")
+
 
     return parser.parse_args()
 
@@ -77,7 +88,7 @@ def parse_evaluate_args():
 
     parser.add_argument("-images", type=str, default="./COCO/2017/val2017/", help="Folder containing validation images")
     parser.add_argument("-anns", type=str, default="./COCO/2017/annotations/instances_val2017.json", help="File containing bbox annotations for validation images")
-    parser.add_argument("-max_imgs", type=int, default=0, help="Specifies upper bound on the number of validation images processed. If <= 0, all validation images are processed.")
+    parser.add_argument("-max_imgs", type=int, default=-1, help="Specifies upper bound on the number of validation images processed. If <= 0, all validation images are processed.")
 
     parser.add_argument("-cfg", type=str, default="./configs/yolov4.cfg", help="Yolo configuration file")
     parser.add_argument("-weights", type=str, default="./weights/yolov4.weights", help="Yolo weights file")

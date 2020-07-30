@@ -1,5 +1,7 @@
+import torch
 import cv2
 import sys
+import multiprocessing
 
 ##### TWEAKABLE CONSTANTS #####
 # NN Constants
@@ -15,6 +17,10 @@ OBJ_THRESH_DEFAULT = 0.25
 
 LETTERBOX_DEFAULT = True
 INPUT_DIM_DEFAULT = 608
+
+# Random resizing stuff
+N_BATCH_TO_RANDOM_RESIZE = 10
+NET_RAND_COEF_IF_1 = 1.4
 
 # Number of times to run the model on a random image as a warmup when benchmarking
 BENCHMARK_N_WARMUPS = 25
@@ -56,6 +62,30 @@ COCO_ANN_TYPE_KEYP = "keypoints"
 
 # Index with yolo's 80 class id to get the corresponding coco 91 class id
 COCO_80_TO_91 = ( 1,2,3,4,5,6,7,8,9,10,11,13,14,15,16,17,18,19,20,21,22,23,24,25,27,28,31,32,33,34,35,36,37,38,39,40,41,42,43,44,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,67,70,72,73,74,75,76,77,78,79,80,81,82,84,85,86,87,88,89,90 )
+
+# Returned coco stats
+COCO_STAT_LAYOUT = "type--IOU--area--maxDets"
+
+COCO_STAT_0_NAME = "AP--0.50:0.95--all--100"
+COCO_STAT_1_NAME = "AP--0.50--all--100"
+COCO_STAT_2_NAME = "AP--0.75--all--100"
+COCO_STAT_3_NAME = "AP--0.50:0.95--small--100"
+COCO_STAT_4_NAME = "AP--0.50:0.95--medium--100"
+COCO_STAT_5_NAME = "AP--0.50:0.95--large--100"
+
+COCO_STAT_6_NAME = "AR--0.50:0.95--all--1"
+COCO_STAT_7_NAME = "AR--0.50:0.95--all--10"
+COCO_STAT_8_NAME = "AR--0.50:0.95--all--100"
+COCO_STAT_9_NAME = "AR--0.50:0.95--small--100"
+COCO_STAT_10_NAME = "AR--0.50:0.95--medium--100"
+COCO_STAT_11_NAME = "AR--0.50:0.95--large--100"
+
+ALL_COCO_STAT_NAMES = (
+    COCO_STAT_0_NAME, COCO_STAT_1_NAME, COCO_STAT_2_NAME, COCO_STAT_3_NAME, COCO_STAT_4_NAME,
+    COCO_STAT_5_NAME, COCO_STAT_6_NAME, COCO_STAT_7_NAME, COCO_STAT_8_NAME, COCO_STAT_9_NAME,
+    COCO_STAT_10_NAME, COCO_STAT_11_NAME
+)
+N_COCO_STATS = len(ALL_COCO_STAT_NAMES)
 
 ##### Supported policies #####
 POLICY_CONSTANT = "constant"
