@@ -1,6 +1,7 @@
 import torch
 import cv2
 import numpy as np
+import random
 
 from utilities.constants import *
 from utilities.images import image_float_to_uint8, image_uint8_to_float
@@ -74,6 +75,87 @@ def possible_image_sizings(init_dim, rand_coef, resize_step):
     dim_list = np.arange(min_dim, max_dim, resize_step, dtype=np.int32).tolist()
 
     return dim_list
+
+##### IMAGE JITTER #####
+# jitter_image
+def jitter_image(image, jitter, resize_coef, target_dim, annotations=None, image_info=None):
+    if(image.dtype == np.uint8):
+        image = image_uint8_to_float(image)
+
+    ow = image.shape[CV2_W_DIM]
+    oh = image.shape[CV2_H_DIM]
+
+    pleft, pright, ptop, pbot = get_jitter_embedding(ow, oh, jitter, resize_coef)
+
+    swidth = ow - pleft - pright
+    sheight = oh - ptop - pbot
+
+    # Image cropping and placement (intersection of image and p rectangle)
+    crop_x1 = max(0, pleft)
+    crop_y1 = max(0, ptop)
+    crop_x2 = min(ow, pleft + swidth)
+    crop_y2 = min(oh, ptop + sheight)
+
+    crop_w = crop_x2 - crop_x1
+    crop_h = crop_y2 - crop_y1
+
+    # No need to do anything further if there's no image cropping
+    if((crop_x1 == 0) and (crop_y1 == 0) and (crop_w == ow) and (crop_h == oh)):
+        new_img = image
+    else:
+        # Just how darknet does it, it sort of mirrors the dimension placement
+        dst_x1 = max(0, -pleft)
+        dst_y1 = max(0, -ptop)
+        dst_x2 = dst_x1 + crop_w
+        dst_y2 = dst_y1 + crop_h
+
+        # Setting up the new image
+        img_mean = np.array(cv2.mean(image))
+        new_img = np.zeros((sheight, swidth, IMG_CHANNEL_COUNT), dtype=np.float32)
+        new_img[..., :] = img_mean[:IMG_CHANNEL_COUNT]
+
+        # Cropping out the original and placing into the new image
+        new_img[dst_y1:dst_y2, dst_x1:dst_x2] = image[crop_y1:crop_y2, crop_x1:crop_x2]
+
+    # Resizing to our target dim
+    new_dim = (target_dim, target_dim)
+    new_img = image_resize(new_img, new_dim)
+
+    return new_img
+
+# get_jitter_embedding
+def get_jitter_embedding(width, height, jitter, resize):
+    # Jitter allowance
+    dw = width * jitter
+    dh = height * jitter
+
+    # Resizing bounds
+    resize_down = 1.0/resize if resize > 1.0 else resize
+    resize_up = 1.0/resize if resize < 1.0 else resize
+
+    min_rdw = width * (1 - (1 / resize_down)) / 2
+    min_rdh = height * (1 - (1 / resize_down)) / 2
+    max_rdw = width * (1 - (1 / resize_up)) / 2
+    max_rdh = height * (1 - (1 / resize_up)) / 2
+
+    # The jitter placement
+    pleft = round(random.uniform(-dw, dw))
+    pright = round(random.uniform(-dw, dw))
+    ptop = round(random.uniform(-dh, dh))
+    pbot = round(random.uniform(-dh, dh))
+
+    # Downsize only
+    if(resize < 1.0):
+        max_rdw = 0
+        max_rdh = 0
+
+    pleft += round(random.uniform(min_rdw, max_rdw))
+    pright += round(random.uniform(min_rdw, max_rdw))
+    ptop += round(random.uniform(min_rdh, max_rdh))
+    pbot += round(random.uniform(min_rdh, max_rdh))
+
+    return pleft, pright, ptop, pbot
+
 
 ##### LETTERBOXING #####
 # letterbox_image
