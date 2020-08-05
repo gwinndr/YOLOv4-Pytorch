@@ -21,8 +21,8 @@ class YoloLayer(nn.Module):
 
     # __init__
     def __init__(self,
-        anchors, anchor_mask, n_classes=YOLO_NCLS_DEF, ignore_thresh=YOLO_IGNORE_DEF,
-        truth_thresh=YOLO_TRUTH_DEF, random=YOLO_RANDOM_DEF, jitter=YOLO_JITTER_DEF,
+        anchors, anchor_mask, n_classes=YOLO_NCLS_DEF, ignore_thresh=YOLO_IGNORE_DEF, truth_thresh=YOLO_TRUTH_DEF,
+        random=YOLO_RANDOM_DEF, jitter=YOLO_JITTER_DEF, resize=YOLO_RESIZE_DEF,
         scale_xy=YOLO_SCALEXY_DEF, iou_thresh=YOLO_IOU_THRESH_DEF, cls_norm=YOLO_CLS_NORM_DEF,
         iou_norm=YOLO_IOU_NORM_DEF, iou_loss=YOLO_IOU_LOSS_DEF, nms_kind=YOLO_NMS_KIND_DEF,
         beta_nms=YOLO_BETA_NMS_DEF, max_delta=YOLO_MAX_DELTA_DEF):
@@ -49,6 +49,7 @@ class YoloLayer(nn.Module):
         self.nms_kind = nms_kind
         self.jitter = jitter
         self.random = random
+        self.resize = resize
 
     # forward
     def forward(self, x, input_dim, anns=None):
@@ -446,7 +447,7 @@ class YoloLayer(nn.Module):
             "YOLO:\n" \
             "      mask: %s  n_cls: %d  scalexy: %f  ignore: %f  truth: %f\n" \
             "      iou_norm: %f  cls_norm: %f  iou_thresh: %f  iou_loss: %s\n" \
-            "      nms_kind: %s  jitter: %f  random: %f" % \
+            "      nms_kind: %s  jitter: %f  random: %f  resize: %f" % \
             (mask, self.n_classes, self.scale_xy, self.ignore_thresh, self.truth_thresh,
              self.iou_norm, self.cls_norm, self.iou_thresh, self.iou_loss,
-             self.nms_kind, self.jitter, self.random)
+             self.nms_kind, self.jitter, self.random, self.resize)

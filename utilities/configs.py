@@ -129,6 +129,7 @@ def yolo_hyperparams_to_netblock(net_block, yolo_layers):
 
     net_block.jitter = yolo_layer.jitter
     net_block.random = yolo_layer.random
+    net_block.resize = yolo_layer.resize
     net_block.nms_kind = yolo_layer.nms_kind
 
     return
@@ -535,6 +536,7 @@ def parse_yolo_block(block, layer_idx):
     classes = find_option(block, "classes", int, YOLO_NCLS_DEF, loud=True, layer_name=layer_name, layer_idx=layer_idx)
     num = find_option(block, "num", int, YOLO_NUM_DEF, loud=True, layer_name=layer_name, layer_idx=layer_idx)
     jitter = find_option(block, "jitter", float, YOLO_JITTER_DEF)
+    resize = find_option(block, "resize", float, YOLO_RESIZE_DEF)
     ignore_thresh = find_option(block, "ignore_thresh", float, YOLO_IGNORE_DEF, loud=True, layer_name=layer_name, layer_idx=layer_idx)
     truth_thresh = find_option(block, "truth_thresh", float, YOLO_TRUTH_DEF)
     random = find_option(block, "random", float, YOLO_RANDOM_DEF)
@@ -586,8 +588,9 @@ def parse_yolo_block(block, layer_idx):
     if(not error_state):
         yolo_layer = YoloLayer(
             anchors, mask, n_classes=classes, ignore_thresh=ignore_thresh, truth_thresh=truth_thresh,
-            random=random, jitter=jitter, scale_xy=scale_xy, iou_thresh=iou_thresh, cls_norm=cls_norm,
-            iou_norm=iou_norm, iou_loss=iou_loss, nms_kind=nms_kind, beta_nms=beta_nms, max_delta=max_delta
+            random=random, jitter=jitter, resize=resize, scale_xy=scale_xy, iou_thresh=iou_thresh,
+            cls_norm=cls_norm, iou_norm=iou_norm, iou_loss=iou_loss, nms_kind=nms_kind,
+            beta_nms=beta_nms, max_delta=max_delta
         )
     else:
         yolo_layer = None

@@ -7,7 +7,7 @@ class NetBlock:
         saturation=NET_SATUR_DEF, exposure=NET_EXPOS_DEF, hue=NET_HUE_DEF, lr=NET_LR_DEF,
         burn_in=NET_BURN_DEF, power=NET_POW_DEF, max_batches=NET_MAX_BAT_DEF, policy=NET_POL_DEF,
         steps=NET_STEP_DEF, scales=NET_SCALE_DEF, mosaic=NET_MOSAIC_DEF, resize_step=NET_RESIZE_STEP_DEF,
-        jitter=NET_JITTER_DEF, random=NET_RAND_DEF, nms_kind=NET_NMS_DEF):
+        jitter=NET_JITTER_DEF, random=NET_RAND_DEF, resize=NET_RESIZE_DEF, nms_kind=NET_NMS_DEF):
 
         self.batch = batch
         self.subdivisions = subdivisions
@@ -31,18 +31,19 @@ class NetBlock:
         self.resize_step = resize_step
         self.jitter = jitter
         self.random = random
+        self.resize = resize
         self.nms_kind = nms_kind
 
     def to_string(self):
         ret = "NETWORK: batch: %d  subdivs: %d  width: %d  height: %d  channels: %d  resize_step: %d\n" \
               "         lr: %f  momentum: %f  decay: %f  burn_in: %d  power: %.2f  max_batches: %d\n" \
               "         angle: %f  saturation: %f  exposure: %f  hue: %f  mosaic: %d\n" \
-              "         jitter: %f  random: %f  nms_kind: '%s'\n" \
+              "         jitter: %f  random: %f  resize: %f  nms_kind: '%s'\n" \
               "         policy: '%s'" % \
               (self.batch, self.subdivisions, self.width, self.height, self.channels, self.resize_step, \
                self.lr, self.momentum, self.decay, self.burn_in, self.power, self.max_batches, \
                self.angle, self.saturation, self.exposure, self.hue, self.mosaic, \
-               self.jitter, self.random, self.nms_kind, \
+               self.jitter, self.random, self.resize, self.nms_kind, \
                self.policy)
 
         if(self.policy == POLICY_STEPS):
