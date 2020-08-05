@@ -43,30 +43,30 @@ def correct_detections(detections, image_info, clamp_detections=False):
     dets_x2 = detections[..., DETECTION_X2]
     dets_y2 = detections[..., DETECTION_Y2]
 
-    # Move embedded image back to top left
-    dets_x1 -= image_info.w_offset
-    dets_y1 -= image_info.h_offset
-    dets_x2 -= image_info.w_offset
-    dets_y2 -= image_info.h_offset
+    # Move image back to top left
+    dets_x1 -= image_info.aug_pleft
+    dets_y1 -= image_info.aug_ptop
+    dets_x2 -= image_info.aug_pleft
+    dets_y2 -= image_info.aug_ptop
 
-    # Normalize by the image within the letterbox
-    dets_x1 /= image_info.embed_w
-    dets_y1 /= image_info.embed_h
-    dets_x2 /= image_info.embed_w
-    dets_y2 /= image_info.embed_h
+    # Normalize by the image within
+    dets_x1 /= image_info.aug_w
+    dets_y1 /= image_info.aug_h
+    dets_x2 /= image_info.aug_w
+    dets_y2 /= image_info.aug_h
 
-    # Map back to original image
-    dets_x1 *= image_info.img_w
-    dets_y1 *= image_info.img_h
-    dets_x2 *= image_info.img_w
-    dets_y2 *= image_info.img_h
+    # Map back to original image dimensions
+    dets_x1 *= image_info.org_w
+    dets_y1 *= image_info.org_h
+    dets_x2 *= image_info.org_w
+    dets_y2 *= image_info.org_h
 
     # Clamping dims to lie within the image
     if(clamp_detections):
-        torch.clamp(dets_x1, min=0, max=img_w, out=dets_x1)
-        torch.clamp(dets_y1, min=0, max=img_h, out=dets_y1)
-        torch.clamp(dets_x2, min=0, max=img_w, out=dets_x2)
-        torch.clamp(dets_y2, min=0, max=img_h, out=dets_y2)
+        torch.clamp(dets_x1, min=0, max=image_info.org_w, out=dets_x1)
+        torch.clamp(dets_y1, min=0, max=image_info.org_h, out=dets_y1)
+        torch.clamp(dets_x2, min=0, max=image_info.org_w, out=dets_x2)
+        torch.clamp(dets_y2, min=0, max=image_info.org_h, out=dets_y2)
 
     return detections
 

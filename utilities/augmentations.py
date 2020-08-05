@@ -7,7 +7,7 @@ from utilities.images import image_float_to_uint8, image_uint8_to_float
 
 ##### IMAGE RESIZING #####
 # image_resize
-def image_resize(image, target_dim, annotations=None):
+def image_resize(image, target_dim, annotations=None, image_info=None):
     """
     ----------
     Author: Damon Gwinn (gwinndr)
@@ -39,6 +39,11 @@ def image_resize(image, target_dim, annotations=None):
         annotations[..., ANN_BBOX_Y1] *= new_h
         annotations[..., ANN_BBOX_X2] *= new_w
         annotations[..., ANN_BBOX_Y2] *= new_h
+
+    # Setting dimension information for new image
+    if(image_info is not None):
+        image_info.set_augmentation(new_img)
+        image_info.set_dimensions(new_w, new_h)
 
 
     return new_img
@@ -115,9 +120,11 @@ def letterbox_image(image, target_dim, annotations=None, image_info=None):
         annotations[..., ANN_BBOX_X2] += start_x
         annotations[..., ANN_BBOX_Y2] += start_y
 
-    # If image_info given, sets information needed to map detections back to the original image
+    # Sets the image topleft offset and the embedding dimensions
     if(image_info is not None):
-        image_info.set_letterbox(start_y, start_x, embed_h, embed_w)
+        image_info.set_augmentation(letterbox)
+        image_info.set_offset(start_x, start_y)
+        image_info.set_dimensions(embed_w, embed_h)
 
     return letterbox
 

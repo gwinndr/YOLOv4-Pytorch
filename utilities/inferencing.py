@@ -33,7 +33,7 @@ def inference(model, input_tensor, obj_thresh):
     return detections
 
 # inference_on_image
-def inference_on_image(model, image, network_dim, obj_thresh, letterbox):
+def inference_on_image(model, image, network_dim, obj_thresh, letterbox, show_img=False):
     """
     ----------
     Author: Damon Gwinn (gwinndr)
@@ -41,11 +41,12 @@ def inference_on_image(model, image, network_dim, obj_thresh, letterbox):
     - Similar to inference except takes in an image as input (simpler to use)
     - Performs all needed pre and post processing
     - Returned detections are relative to the input image
+    - show_img will show the augmented input image
     ----------
     """
 
     # Preprocessing
-    input_tensor, img_info = preprocess_image_eval(image, network_dim, letterbox)
+    input_tensor, img_info = preprocess_image_eval(image, network_dim, letterbox, show_img=show_img)
     input_tensor = input_tensor.unsqueeze(0) # batch dim
 
     detections = inference(model, input_tensor, obj_thresh)[0]

@@ -6,39 +6,66 @@ class ImageInfo:
     ----------
     Author: Damon Gwinn (gwinndr)
     ----------
-    - Contains information about the image being input into darknet
-    - This class is used when inferencing to map detections back to the original image
+    - Contains augmentation information about a given image
+    - Used for tracking image positions for mapping back or cropping
     ----------
     """
 
     # __init__
-    def __init__(self, image, network_dim):
-        self.image = image
-        self.network_dim = network_dim
+    def __init__(self, image):
+        # Original image
+        self.org_image = image
 
-        # Original image width and height
-        self.img_h = image.shape[CV2_H_DIM]
-        self.img_w = image.shape[CV2_W_DIM]
+        self.org_h = image.shape[CV2_H_DIM]
+        self.org_w = image.shape[CV2_W_DIM]
 
-        # Letterboxing offset
-        self.h_offset = 0
-        self.w_offset = 0
+        # Augmented image
+        self.aug_image = image.copy()
 
-        # Height and width of image embedded within the letterbox (or just the whole input tensor)
-        self.embed_h = network_dim
-        self.embed_w = network_dim
+        # Top left offset position
+        self.aug_pleft = 0
+        self.aug_ptop = 0
 
-    # set_letterbox
-    def set_letterbox(self, h_offset, w_offset, embed_h, embed_w):
+        # Width and height from the top left position
+        self.aug_h = self.org_h
+        self.aug_w = self.org_w
+
+    # set_augmentation
+    def set_augmentation(self, aug_image):
         """
         ----------
         Author: Damon Gwinn (gwinndr)
         ----------
-        - Sets letterboxing information for the image embedding
+        - Sets augmented image
         ----------
         """
 
-        self.h_offset = h_offset
-        self.w_offset = w_offset
-        self.embed_h = embed_h
-        self.embed_w = embed_w
+        self.aug_image = aug_image
+
+    # set_offset
+    def set_offset(self, pleft, ptop):
+        """
+        ----------
+        Author: Damon Gwinn (gwinndr)
+        ----------
+        - Sets the topleft position offset of the augmented image
+        ----------
+        """
+
+        self.aug_pleft = pleft
+        self.aug_ptop = ptop
+
+        return
+
+    # set_dimensions
+    def set_dimensions(self, width, height):
+        """
+        ----------
+        Author: Damon Gwinn (gwinndr)
+        ----------
+        - Sets the width and height of the augmented image
+        ----------
+        """
+
+        self.aug_w = width
+        self.aug_h = height

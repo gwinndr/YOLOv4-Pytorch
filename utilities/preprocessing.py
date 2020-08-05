@@ -1,4 +1,5 @@
 import torch
+import cv2
 
 from utilities.constants import *
 from utilities.devices import get_device, cpu_device
@@ -8,20 +9,21 @@ from utilities.image_info import ImageInfo
 from utilities.augmentations import letterbox_image, image_resize
 
 # preprocess_image_eval
-def preprocess_image_eval(image, target_dim, letterbox, force_cpu=False):
+def preprocess_image_eval(image, target_dim, letterbox, show_img=False, force_cpu=False):
     """
     ----------
     Author: Damon Gwinn (gwinndr)
     ----------
     - Converts a cv2 image into Darknet input format with dimensions target_dim x target_dim
     - Letterboxing recommended for best results
+    - show_img will show the augmented input image
     - force_cpu will force the return type to be on the cpu, otherwise uses the default device
     - Returns preprocessed input tensor and image info object for mapping detections back
     ----------
     """
 
     # Tracking image information to map detections back
-    image_info = ImageInfo(image, target_dim)
+    image_info = ImageInfo(image)
 
     if(force_cpu):
         device = cpu_device()
@@ -32,10 +34,15 @@ def preprocess_image_eval(image, target_dim, letterbox, force_cpu=False):
     if(letterbox):
         input_image = letterbox_image(image, target_dim, image_info=image_info)
     else:
-        input_image = image_resize(input_image, (target_dim, target_dim))
+        input_image = image_resize(input_image, (target_dim, target_dim), image_info=image_info)
 
     # Converting to tensor
     input_tensor = image_to_tensor(input_image, device=device)
+
+    # Show image (if applicable)
+    if(show_img):
+        cv2.imshow("Augmented Input Image", image_info.aug_image)
+        cv2.waitKey(0)
 
     return input_tensor, image_info
 
