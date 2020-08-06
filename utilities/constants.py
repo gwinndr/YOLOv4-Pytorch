@@ -227,6 +227,10 @@ CV2_W_DIM = 1
 CV2_C_DIM = 2
 CV2_N_DIMS = 3 # Number of cv2 dimensions
 
+# If using an image in float32 form (0-1), then the max h value is 360 <-- we do this
+# If using an image in uint8 form (0-255), then the max h value is 179
+CV2_HSV_H_MAX = 360.0
+
 TENSOR_C_DIM = 0
 TENSOR_H_DIM = 1
 TENSOR_W_DIM = 2

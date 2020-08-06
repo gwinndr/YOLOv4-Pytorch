@@ -4,6 +4,7 @@ import numpy as np
 import random
 
 from utilities.constants import *
+from utilities.rando import rand_scale
 from utilities.images import image_float_to_uint8, image_uint8_to_float
 
 ##### IMAGE RESIZING #####
@@ -76,6 +77,7 @@ def possible_image_sizings(init_dim, rand_coef, resize_step):
 
     return dim_list
 
+
 ##### IMAGE JITTER #####
 # jitter_image
 def jitter_image(image, jitter, resize_coef, target_dim, annotations=None, image_info=None):
@@ -103,7 +105,7 @@ def jitter_image(image, jitter, resize_coef, target_dim, annotations=None, image
     if((crop_x1 == 0) and (crop_y1 == 0) and (crop_w == ow) and (crop_h == oh)):
         new_img = image
     else:
-        # Just how darknet does it, it sort of mirrors the dimension placement
+        # Just how darknet does it, it sort of reflects the dimension placement
         dst_x1 = max(0, -pleft)
         dst_y1 = max(0, -ptop)
         dst_x2 = dst_x1 + crop_w
@@ -156,6 +158,49 @@ def get_jitter_embedding(width, height, jitter, resize):
 
     return pleft, pright, ptop, pbot
 
+
+##### HSV SHIFTING #####
+# hsv_shift_image
+def hsv_shift_image(image, hue, saturation, exposure, image_info=None):
+
+    # Very important this conversion happens, otherwise CV2_HSV_H_MAX is wrong
+    if(image.dtype == np.uint8):
+        image = image_uint8_to_float(image)
+
+    dhue, dsat, dexp = get_hsv_shifting(hue, saturation, exposure)
+    hue_term = dhue * CV2_HSV_H_MAX
+
+    print(dhue, dsat, dexp)
+
+    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    h, s, v = cv2.split(hsv)
+
+    # Ze shift
+    h += hue_term
+    s *= dsat
+    v *= dexp
+
+    # This fix prevents weird results with artifacting
+    if(dhue < 0):
+        h[h < 0.0] += CV2_HSV_H_MAX
+    else:
+        h[h > CV2_HSV_H_MAX] -= CV2_HSV_H_MAX
+
+    hsv = cv2.merge([h, s, v])
+    new_img = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
+
+    if(image_info is not None):
+        image_info.set_augmentation(new_img)
+
+    return new_img
+
+# get_hsv_shifting
+def get_hsv_shifting(hue, saturation, exposure):
+    dhue = random.uniform(-hue, hue);
+    dsat = rand_scale(saturation);
+    dexp = rand_scale(exposure);
+
+    return dhue, dsat, dexp
 
 ##### LETTERBOXING #####
 # letterbox_image
