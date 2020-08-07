@@ -22,13 +22,19 @@ class ImageInfo:
         # Augmented image
         self.aug_image = image.copy()
 
-        # Top left offset position
+        # Width and height for the full augmented image
+        self.aug_h = self.org_h
+        self.aug_w = self.org_w
+
+        # Top left offset position of the image embedded within
         self.aug_pleft = 0
         self.aug_ptop = 0
 
-        # Width and height from the top left position
-        self.aug_h = self.org_h
-        self.aug_w = self.org_w
+        # Width and height of the embedded image from the top left position
+        self.aug_embed_h = self.org_h
+        self.aug_embed_w = self.org_w
+
+
 
     # set_augmentation
     def set_augmentation(self, aug_image):
@@ -48,7 +54,7 @@ class ImageInfo:
         ----------
         Author: Damon Gwinn (gwinndr)
         ----------
-        - Sets the topleft position offset of the augmented image
+        - Sets the topleft position offset of the embedded augmented image
         ----------
         """
 
@@ -57,15 +63,15 @@ class ImageInfo:
 
         return
 
-    # set_dimensions
-    def set_dimensions(self, width, height):
+    # set_embedding_dimensions
+    def set_embedding_dimensions(self, width, height):
         """
         ----------
         Author: Damon Gwinn (gwinndr)
         ----------
-        - Sets the width and height of the augmented image
+        - Sets the width and height of the embedded augmented image
         ----------
         """
 
-        self.aug_w = width
-        self.aug_h = height
+        self.aug_embed_w = width
+        self.aug_embed_h = height

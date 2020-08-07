@@ -231,6 +231,9 @@ CV2_N_DIMS = 3 # Number of cv2 dimensions
 # If using an image in uint8 form (0-255), then the max h value is 179
 CV2_HSV_H_MAX = 360.0
 
+# Offset forces mosaic to not place the cut point more than 20% into any sidek
+MOSAIC_MIN_OFFSET = 0.2
+
 TENSOR_C_DIM = 0
 TENSOR_H_DIM = 1
 TENSOR_W_DIM = 2

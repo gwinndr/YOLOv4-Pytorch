@@ -15,7 +15,6 @@ def preprocess_image_eval(image, target_dim, letterbox, show_img=False, force_cp
     Author: Damon Gwinn (gwinndr)
     ----------
     - Converts a cv2 image into Darknet input format with dimensions target_dim x target_dim
-    - Letterboxing recommended for best results
     - show_img will show the augmented input image
     - force_cpu will force the return type to be on the cpu, otherwise uses the default device
     - Returns preprocessed input tensor and image info object for mapping detections back
@@ -53,7 +52,8 @@ def preprocess_image_train(image, annotations, target_dim, letterbox, force_cpu=
     Author: Damon Gwinn (gwinndr)
     ----------
     - Converts a cv2 image into Darknet input format with dimensions target_dim x target_dim
-    - Will map annotations to the new image
+    - Annotations are assumed to be normalized (0-1) relative to the input image
+    - Will map annotations to the transformed input
     - force_cpu will force the return type to be on the cpu, otherwise uses the default device
     ----------
     """
@@ -71,9 +71,6 @@ def preprocess_image_train(image, annotations, target_dim, letterbox, force_cpu=
         input_image = letterbox_image(image, target_dim, annotations=annotations)
     else:
         input_image = image_resize(image, (target_dim, target_dim), annotations=annotations)
-
-    # Normalizing annotations
-    annotations[..., ANN_BBOX_X1:ANN_BBOX_Y2+1] /= target_dim
 
     # Converting to tensor
     input_tensor = image_to_tensor(input_image, device=device)

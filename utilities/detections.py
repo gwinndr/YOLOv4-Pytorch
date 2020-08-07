@@ -50,10 +50,10 @@ def correct_detections(detections, image_info, clamp_detections=False):
     dets_y2 -= image_info.aug_ptop
 
     # Normalize by the image within
-    dets_x1 /= image_info.aug_w
-    dets_y1 /= image_info.aug_h
-    dets_x2 /= image_info.aug_w
-    dets_y2 /= image_info.aug_h
+    dets_x1 /= image_info.aug_embed_w
+    dets_y1 /= image_info.aug_embed_h
+    dets_x2 /= image_info.aug_embed_w
+    dets_y2 /= image_info.aug_embed_h
 
     # Map back to original image dimensions
     dets_x1 *= image_info.org_w

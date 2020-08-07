@@ -6,46 +6,28 @@ import random
 from utilities.constants import *
 from utilities.rando import rand_scale
 from utilities.images import image_float_to_uint8, image_uint8_to_float
+from utilities.image_info import ImageInfo
 
 ##### IMAGE RESIZING #####
 # image_resize
-def image_resize(image, target_dim, annotations=None, image_info=None):
+def image_resize(image, target_dim, image_info=None):
     """
     ----------
     Author: Damon Gwinn (gwinndr)
     ----------
     - Resizes a cv2 image to the desired dimensions
     - target_dim should be of the form (width, height)
-    - If annotations are given, maps annotations to the new image (in_place)
+    - Annotations should be already normalized so image resizing does not have an effect
     - Interpolation given by CV2_INTERPOLATION in constants.py
     ----------
     """
 
     new_img = cv2.resize(image, target_dim, interpolation=CV2_INTERPOLATION)
 
-    # Mapping annotations to the new image
-    if(annotations is not None):
-        img_h = image.shape[CV2_H_DIM]
-        img_w = image.shape[CV2_W_DIM]
-        new_h = new_img.shape[CV2_H_DIM]
-        new_w = new_img.shape[CV2_W_DIM]
-
-        # Normalizing
-        annotations[..., ANN_BBOX_X1] /= img_w
-        annotations[..., ANN_BBOX_Y1] /= img_h
-        annotations[..., ANN_BBOX_X2] /= img_w
-        annotations[..., ANN_BBOX_Y2] /= img_h
-
-        # Mapping to new image dimensions
-        annotations[..., ANN_BBOX_X1] *= new_w
-        annotations[..., ANN_BBOX_Y1] *= new_h
-        annotations[..., ANN_BBOX_X2] *= new_w
-        annotations[..., ANN_BBOX_Y2] *= new_h
-
     # Setting dimension information for new image
     if(image_info is not None):
         image_info.set_augmentation(new_img)
-        image_info.set_dimensions(new_w, new_h)
+        image_info.set_embedding_dimensions(new_w, new_h)
 
 
     return new_img
@@ -77,17 +59,193 @@ def possible_image_sizings(init_dim, rand_coef, resize_step):
 
     return dim_list
 
+##### MOSAIC #####
+# create_mosaic
+def create_mosaic(images, jitter, resize_coef, target_dim, annotations=None):
+
+    if(len(images) != 4):
+        print("create_mosaic: Error: Mosaic must be given a list of 4 images")
+        return None
+
+    # Create placement image
+    mosaic_img = np.zeros((target_dim, target_dim, IMG_CHANNEL_COUNT), dtype=np.float32)
+
+    cut_start = round(target_dim * MOSAIC_MIN_OFFSET)
+    cut_end = round(target_dim * (1.0 - MOSAIC_MIN_OFFSET))
+
+    # The center point that all 4 images meet at
+    cut_x = random.randint(cut_start, cut_end)
+    cut_y = random.randint(cut_start, cut_end)
+
+    # cut_x = 302
+    # cut_y = 108
+
+    # Go through each image and place inside the mosaic
+    for i, img in enumerate(images):
+        if(img.dtype == np.uint8):
+            img = image_uint8_to_float(img)
+
+        image_info = ImageInfo(img)
+
+        ow = img.shape[CV2_W_DIM]
+        oh = img.shape[CV2_H_DIM]
+
+        # Jitter information
+        pleft, pright, ptop, pbot = get_jitter_embedding(ow, oh, jitter, resize_coef)
+        # -137 74 -20 -114
+        # pleft = -137
+        # pright = 74
+        # ptop = -20
+        # pbot = -114
+        print(cut_x, cut_y)
+        print(pleft, pright, ptop, pbot)
+
+        # Mosaic force corner
+        # if(bool(random.randint(0,1))):
+        #     # Top left
+        #     if (i == 0):
+        #         pright += pleft
+        #         pleft = 0
+        #         pbot += ptop
+        #         ptop = 0
+        #     # Top right
+        #     elif (i == 1):
+        #         pleft += pright
+        #         pright = 0
+        #         pbot += ptop
+        #         ptop = 0
+        #     # Bottom left
+        #     elif (i == 2):
+        #         pright += pleft
+        #         pleft = 0
+        #         ptop += pbot
+        #         pbot = 0
+        #     # Bottom right
+        #     else: # (i == 3)
+        #         pleft += pright
+        #         pright = 0
+        #         ptop += pbot
+        #         pbot = 0
+
+        # Jittering image beforehand
+        jitter_embedding = (pleft, pright, ptop, pbot)
+        jittered_img = jitter_image_precalc(img, jitter_embedding, target_dim, image_info=image_info)
+
+        left_shift = min(cut_x, max(0, (-pleft*target_dim / ow)))
+        top_shift = min(cut_y, max(0, (-ptop*target_dim / oh)))
+
+        right_shift = min((target_dim - cut_x), max(0, (-pright*target_dim / ow)))
+        bot_shift = min(target_dim - cut_y, max(0, (-pbot*target_dim / oh)))
+
+        place_image_mosaic(mosaic_img, jittered_img, image_info, cut_x, cut_y, i, annotations=annotations)
+
+    return mosaic_img
+
+def place_image_mosaic(placement_image, image, image_info, cut_x, cut_y, i_num, annotations=None):
+
+    ow = image.shape[CV2_W_DIM]
+    oh = image.shape[CV2_H_DIM]
+    pw = placement_image.shape[CV2_W_DIM]
+    ph = placement_image.shape[CV2_H_DIM]
+
+    # top left
+    if(i_num == 0):
+        placem_x1 = 0
+        placem_x2 = cut_x
+        placem_y1 = 0
+        placem_y2 = cut_y
+    # top right
+    elif(i_num == 1):
+        placem_x1 = cut_x
+        placem_x2 = pw
+        placem_y1 = 0
+        placem_y2 = cut_y
+    # Bottom left
+    elif(i_num == 2):
+        placem_x1 = 0
+        placem_x2 = cut_x
+        placem_y1 = cut_y
+        placem_y2 = ph
+    # Bottom right
+    else: #(i_num == 3):
+        placem_x1 = cut_x
+        placem_x2 = pw
+        placem_y1 = cut_y
+        placem_y2 = ph
+
+    needed_w = placem_x2 - placem_x1
+    needed_h = placem_y2 - placem_y1
+
+    pleft = image_info.aug_pleft
+    ptop = image_info.aug_ptop
+    avail_w = image_info.aug_embed_w
+    avail_h = image_info.aug_embed_h
+
+    # print(needed_w)
+    # print(needed_h)
+    # print("")
+    # print(pleft)
+    # print(ptop)
+    # print(avail_w)
+    # print(avail_h)
+
+    # Just pretend it doesn't exist :-) (TODO)
+    if(avail_w < needed_w):
+        print("BAD")
+        return
+    if(avail_h < needed_h):
+        print("BAD")
+        return
+
+    # Basically in reverse to placement
+    # top left = start at bottom right
+    if(i_num == 0):
+        pright = pleft + avail_w
+        pbot = ptop + avail_h
+        pleft = pright - needed_w
+        ptop = pbot - needed_h
+    # top right = start at bottom left
+    elif(i_num == 1):
+        pright = pleft + needed_w
+        pbot = ptop + avail_h
+        pleft = pleft
+        ptop = pbot - needed_h
+    # Bottom left = start at top right
+    elif(i_num == 2):
+        pright = pleft + avail_w
+        pbot = ptop + needed_h
+        pleft = pright - needed_w
+        ptop = ptop
+    # Bottom right = start at top left
+    else: #(i_num == 3):
+        pright = pleft + needed_w
+        pbot = ptop + needed_h
+        pleft = pleft
+        ptop = ptop
+        
+    placement_image[placem_y1:placem_y2, placem_x1:placem_x2] = image[ptop:pbot, pleft:pright]
+
+    return
 
 ##### IMAGE JITTER #####
-# jitter_image
 def jitter_image(image, jitter, resize_coef, target_dim, annotations=None, image_info=None):
+    ow = image.shape[CV2_W_DIM]
+    oh = image.shape[CV2_H_DIM]
+
+    precalc = get_jitter_embedding(ow, oh, jitter, resize_coef)
+    jitter_img = jitter_image_precalc(image, precalc, target_dim, annotations=annotations, image_info=image_info)
+
+    return jitter_img
+
+# jitter_image_precalc
+def jitter_image_precalc(image, precalc, target_dim, annotations=None, image_info=None):
     if(image.dtype == np.uint8):
         image = image_uint8_to_float(image)
 
     ow = image.shape[CV2_W_DIM]
     oh = image.shape[CV2_H_DIM]
 
-    pleft, pright, ptop, pbot = get_jitter_embedding(ow, oh, jitter, resize_coef)
+    pleft, pright, ptop, pbot = precalc
 
     swidth = ow - pleft - pright
     sheight = oh - ptop - pbot
@@ -104,6 +262,12 @@ def jitter_image(image, jitter, resize_coef, target_dim, annotations=None, image
     # No need to do anything further if there's no image cropping
     if((crop_x1 == 0) and (crop_y1 == 0) and (crop_w == ow) and (crop_h == oh)):
         new_img = image
+
+        # Image info placement
+        dst_x1_norm = 0.0
+        dst_y1_norm = 0.0
+        dst_w_norm = 1.0
+        dst_h_norm = 1.0
     else:
         # Just how darknet does it, it sort of reflects the dimension placement
         dst_x1 = max(0, -pleft)
@@ -119,9 +283,30 @@ def jitter_image(image, jitter, resize_coef, target_dim, annotations=None, image
         # Cropping out the original and placing into the new image
         new_img[dst_y1:dst_y2, dst_x1:dst_x2] = image[crop_y1:crop_y2, crop_x1:crop_x2]
 
+        # Image info placement
+        dst_x1_norm = dst_x1 / swidth
+        dst_y1_norm = dst_y1 / sheight
+        dst_w_norm = crop_w / swidth
+        dst_h_norm = crop_h / sheight
+
     # Resizing to our target dim
     new_dim = (target_dim, target_dim)
     new_img = image_resize(new_img, new_dim)
+
+    # Setting annotations
+    # if(annotations is not None):
+
+
+    # Setting image info
+    if(image_info is not None):
+        start_x = round(dst_x1_norm * target_dim)
+        start_y = round(dst_y1_norm * target_dim)
+        embed_w = round(dst_w_norm * target_dim)
+        embed_h = round(dst_h_norm * target_dim)
+
+        image_info.set_augmentation(new_img)
+        image_info.set_offset(start_x, start_y)
+        image_info.set_embedding_dimensions(embed_w, embed_h)
 
     return new_img
 
@@ -161,16 +346,18 @@ def get_jitter_embedding(width, height, jitter, resize):
 
 ##### HSV SHIFTING #####
 # hsv_shift_image
-def hsv_shift_image(image, hue, saturation, exposure, image_info=None):
+def hsv_shift_image(image, hue, saturation, exposure, image_info=None, precalc=None):
 
     # Very important this conversion happens, otherwise CV2_HSV_H_MAX is wrong
     if(image.dtype == np.uint8):
         image = image_uint8_to_float(image)
 
-    dhue, dsat, dexp = get_hsv_shifting(hue, saturation, exposure)
-    hue_term = dhue * CV2_HSV_H_MAX
+    if(precalc is None):
+        dhue, dsat, dexp = get_hsv_shifting(hue, saturation, exposure)
+    else:
+        dhue, dsat, dexp = precalc
 
-    print(dhue, dsat, dexp)
+    hue_term = dhue * CV2_HSV_H_MAX
 
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
     h, s, v = cv2.split(hsv)
@@ -201,6 +388,7 @@ def get_hsv_shifting(hue, saturation, exposure):
     dexp = rand_scale(exposure);
 
     return dhue, dsat, dexp
+
 
 ##### LETTERBOXING #####
 # letterbox_image
@@ -233,7 +421,7 @@ def letterbox_image(image, target_dim, annotations=None, image_info=None):
 
     # Resizing image to the embedding dimensions
     embed_dim = (embed_w, embed_h)
-    embedding_img = image_resize(image, embed_dim, annotations=annotations)
+    embedding_img = image_resize(image, embed_dim)
 
     embedding_img = image_uint8_to_float(embedding_img)
 
@@ -242,16 +430,19 @@ def letterbox_image(image, target_dim, annotations=None, image_info=None):
 
     # Adding letterbox offsets to annotations
     if(annotations is not None):
-        annotations[..., ANN_BBOX_X1] += start_x
-        annotations[..., ANN_BBOX_Y1] += start_y
-        annotations[..., ANN_BBOX_X2] += start_x
-        annotations[..., ANN_BBOX_Y2] += start_y
+        start_x_norm = start_x / target_dim
+        start_y_norm = start_y / target_dim
+
+        annotations[..., ANN_BBOX_X1] += start_x_norm
+        annotations[..., ANN_BBOX_Y1] += start_y_norm
+        annotations[..., ANN_BBOX_X2] += start_x_norm
+        annotations[..., ANN_BBOX_Y2] += start_y_norm
 
     # Sets the image topleft offset and the embedding dimensions
     if(image_info is not None):
         image_info.set_augmentation(letterbox)
         image_info.set_offset(start_x, start_y)
-        image_info.set_dimensions(embed_w, embed_h)
+        image_info.set_embedding_dimensions(embed_w, embed_h)
 
     return letterbox
 
