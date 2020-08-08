@@ -62,7 +62,7 @@ def possible_image_sizings(init_dim, rand_coef, resize_step):
 
 ##### MOSAIC #####
 # create_mosaic
-def create_mosaic(images, jitter, resize_coef, target_dim, annotations=None):
+def create_mosaic(images, jitter, resize_coef, target_dim, images_annotations=None):
 
     if(len(images) != 4):
         print("create_mosaic: Error: Mosaic must be given a list of 4 images")
@@ -82,6 +82,8 @@ def create_mosaic(images, jitter, resize_coef, target_dim, annotations=None):
     for i, img in enumerate(images):
         if(img.dtype == np.uint8):
             img = image_uint8_to_float(img)
+
+        annotations = images_annotations[i] if images_annotations is not None else None
 
         image_info = ImageInfo(img)
 
@@ -126,6 +128,7 @@ def create_mosaic(images, jitter, resize_coef, target_dim, annotations=None):
 
     return mosaic_img
 
+# place_image_mosaic
 def place_image_mosaic(placement_image, image, image_info, cut_x, cut_y, i_num, annotations=None):
 
     ow = image.shape[CV2_W_DIM]
@@ -220,17 +223,17 @@ def correct_mosaic_placement(p, avail, needed, full):
     return corrected_p, corrected_avail
 
 ##### IMAGE JITTER #####
-def jitter_image(image, jitter, resize_coef, target_dim, annotations=None):
+def jitter_image(image, jitter, resize_coef, target_dim, annotations=None, image_info=None):
     ow = image.shape[CV2_W_DIM]
     oh = image.shape[CV2_H_DIM]
 
     precalc = get_jitter_embedding(ow, oh, jitter, resize_coef)
-    jitter_img = jitter_image_precalc(image, precalc, target_dim, annotations=annotations)
+    jitter_img = jitter_image_precalc(image, precalc, target_dim, annotations=annotations, image_info=image_info)
 
     return jitter_img
 
 # jitter_image_precalc
-def jitter_image_precalc(image, precalc, target_dim, annotations=None):
+def jitter_image_precalc(image, precalc, target_dim, annotations=None, image_info=None):
     if(image.dtype == np.uint8):
         image = image_uint8_to_float(image)
 
@@ -285,13 +288,14 @@ def jitter_image_precalc(image, precalc, target_dim, annotations=None):
     new_dim = (target_dim, target_dim)
     new_img = image_resize(new_img, new_dim)
 
+    # Needed by image info and annotations
+    start_x = round(dst_x1_norm * target_dim)
+    start_y = round(dst_y1_norm * target_dim)
+    embed_w = round(dst_w_norm * target_dim)
+    embed_h = round(dst_h_norm * target_dim)
+
     # Setting annotations
     if(annotations is not None):
-        start_x = round(dst_x1_norm * target_dim)
-        start_y = round(dst_y1_norm * target_dim)
-        embed_w = round(dst_w_norm * target_dim)
-        embed_h = round(dst_h_norm * target_dim)
-
         boxes = annotations[..., ANN_BBOX_X1:ANN_BBOX_Y2+1]
 
         # First crop out the boxes from the image
@@ -303,6 +307,12 @@ def jitter_image_precalc(image, precalc, target_dim, annotations=None):
                     boxes_normalized=True)
 
         annotations[..., ANN_BBOX_X1:ANN_BBOX_Y2+1] = boxes
+
+    # Setting image info
+    if(image_info is not None):
+        image_info.set_augmentation(new_img)
+        image_info.set_offset(start_x, start_y)
+        image_info.set_embedding_dimensions(embed_w, embed_h)
 
     return new_img
 
