@@ -122,7 +122,7 @@ def create_mosaic(images, jitter, resize_coef, target_dim, images_annotations=No
 
         # Jittering image beforehand
         jitter_embedding = (pleft, pright, ptop, pbot)
-        jittered_img = jitter_image_precalc(img, jitter_embedding, target_dim, image_info=image_info)
+        jittered_img = jitter_image_precalc(img, jitter_embedding, target_dim, annotations=annotations, image_info=image_info)
 
         place_image_mosaic(mosaic_img, jittered_img, image_info, cut_x, cut_y, i, annotations=annotations)
 
@@ -172,8 +172,21 @@ def place_image_mosaic(placement_image, image, image_info, cut_x, cut_y, i_num, 
     full_h = image_info.aug_h
 
     # Fix for when we need to go outside the embedded image
-    pleft, avail_w = correct_mosaic_placement(pleft, avail_w, needed_w, full_w)
-    ptop, avail_h = correct_mosaic_placement(ptop, avail_h, needed_h, full_h)
+    pleft_fix, avail_w_fix = correct_mosaic_placement(pleft, avail_w, needed_w, full_w)
+    ptop_fix, avail_h_fix = correct_mosaic_placement(ptop, avail_h, needed_h, full_h)
+
+    # For properly mapping annotations
+    offset_x_fix = abs(pleft - pleft_fix)
+    offset_y_fix = abs(ptop - ptop_fix)
+    embed_w_fix = abs(avail_w - avail_w_fix)
+    embed_h_fix = abs(avail_h - avail_h_fix)
+
+    # print(offset_x_fix, offset_y_fix, actual_w, actual_h, avail_w_fix, avail_h_fix)
+
+    pleft = pleft_fix
+    avail_w = avail_w_fix
+    ptop = ptop_fix
+    avail_h = avail_h_fix
 
     # Basically in reverse to placement
     # top left = start at bottom right
@@ -202,6 +215,28 @@ def place_image_mosaic(placement_image, image, image_info, cut_x, cut_y, i_num, 
         ptop = ptop
 
     placement_image[placem_y1:placem_y2, placem_x1:placem_x2] = image[ptop:pbot, pleft:pright]
+
+    # Mapping annotations
+    if(annotations is not None):
+        boxes = annotations[..., ANN_BBOX_X1:ANN_BBOX_Y2+1]
+
+        # Account for offset in case of fix
+        pleft_adj = pleft + offset_x_fix
+        ptop_adj = ptop + offset_y_fix
+        actual_w = needed_w - embed_w_fix
+        actual_h = needed_h - embed_h_fix
+        placem_x1_adj = placem_x1 + offset_x_fix
+        placem_y1_adj = placem_y1 + offset_y_fix
+
+        # Crop by adjusted dims
+        boxes = crop_boxes(boxes, ow, oh, pleft_adj, ptop_adj, actual_w, actual_h, boxes_normalized=True)
+
+        # Map to adjusted image embedded in the mosaic
+        boxes = correct_boxes(boxes, actual_w, actual_h, pw, ph,
+                    n_offs_x=placem_x1_adj, n_offs_y=placem_y1_adj, n_embed_w=actual_w, n_embed_h=actual_h,
+                    boxes_normalized=True)
+
+        annotations[..., ANN_BBOX_X1:ANN_BBOX_Y2+1] = boxes
 
     return
 
