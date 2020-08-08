@@ -67,10 +67,10 @@ class CocoDataset(Dataset):
         # Normalizing annotations
         ow = image.shape[CV2_W_DIM]
         oh = image.shape[CV2_H_DIM]
-        annotations[..., ANN_BBOX_X1] /= ow
-        annotations[..., ANN_BBOX_Y1] /= oh
-        annotations[..., ANN_BBOX_X2] /= ow
-        annotations[..., ANN_BBOX_Y2] /= oh
+        anns[..., ANN_BBOX_X1] /= ow
+        anns[..., ANN_BBOX_Y1] /= oh
+        anns[..., ANN_BBOX_X2] /= ow
+        anns[..., ANN_BBOX_Y2] /= oh
 
         # preprocessing
         img_tensor, anns_partial = preprocess_image_train(image, anns, self.input_dim, self.letterbox, force_cpu=True)

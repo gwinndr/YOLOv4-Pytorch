@@ -70,7 +70,7 @@ def preprocess_image_train(image, annotations, target_dim, letterbox, force_cpu=
     if(letterbox):
         input_image = letterbox_image(image, target_dim, annotations=annotations)
     else:
-        input_image = image_resize(image, (target_dim, target_dim), annotations=annotations)
+        input_image = image_resize(image, (target_dim, target_dim))
 
     # Converting to tensor
     input_tensor = image_to_tensor(input_image, device=device)

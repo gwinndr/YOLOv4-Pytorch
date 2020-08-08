@@ -77,9 +77,6 @@ def create_mosaic(images, jitter, resize_coef, target_dim, annotations=None):
     cut_x = random.randint(cut_start, cut_end)
     cut_y = random.randint(cut_start, cut_end)
 
-    # cut_x = 302
-    # cut_y = 108
-
     # Go through each image and place inside the mosaic
     for i, img in enumerate(images):
         if(img.dtype == np.uint8):
@@ -92,50 +89,37 @@ def create_mosaic(images, jitter, resize_coef, target_dim, annotations=None):
 
         # Jitter information
         pleft, pright, ptop, pbot = get_jitter_embedding(ow, oh, jitter, resize_coef)
-        # -137 74 -20 -114
-        # pleft = -137
-        # pright = 74
-        # ptop = -20
-        # pbot = -114
-        print(cut_x, cut_y)
-        print(pleft, pright, ptop, pbot)
 
         # Mosaic force corner
-        # if(bool(random.randint(0,1))):
-        #     # Top left
-        #     if (i == 0):
-        #         pright += pleft
-        #         pleft = 0
-        #         pbot += ptop
-        #         ptop = 0
-        #     # Top right
-        #     elif (i == 1):
-        #         pleft += pright
-        #         pright = 0
-        #         pbot += ptop
-        #         ptop = 0
-        #     # Bottom left
-        #     elif (i == 2):
-        #         pright += pleft
-        #         pleft = 0
-        #         ptop += pbot
-        #         pbot = 0
-        #     # Bottom right
-        #     else: # (i == 3)
-        #         pleft += pright
-        #         pright = 0
-        #         ptop += pbot
-        #         pbot = 0
+        if(bool(random.randint(0,1))):
+            # Top left
+            if (i == 0):
+                pright += pleft
+                pleft = 0
+                pbot += ptop
+                ptop = 0
+            # Top right
+            elif (i == 1):
+                pleft += pright
+                pright = 0
+                pbot += ptop
+                ptop = 0
+            # Bottom left
+            elif (i == 2):
+                pright += pleft
+                pleft = 0
+                ptop += pbot
+                pbot = 0
+            # Bottom right
+            else: # (i == 3)
+                pleft += pright
+                pright = 0
+                ptop += pbot
+                pbot = 0
 
         # Jittering image beforehand
         jitter_embedding = (pleft, pright, ptop, pbot)
         jittered_img = jitter_image_precalc(img, jitter_embedding, target_dim, image_info=image_info)
-
-        left_shift = min(cut_x, max(0, (-pleft*target_dim / ow)))
-        top_shift = min(cut_y, max(0, (-ptop*target_dim / oh)))
-
-        right_shift = min((target_dim - cut_x), max(0, (-pright*target_dim / ow)))
-        bot_shift = min(target_dim - cut_y, max(0, (-pbot*target_dim / oh)))
 
         place_image_mosaic(mosaic_img, jittered_img, image_info, cut_x, cut_y, i, annotations=annotations)
 
@@ -180,22 +164,12 @@ def place_image_mosaic(placement_image, image, image_info, cut_x, cut_y, i_num, 
     ptop = image_info.aug_ptop
     avail_w = image_info.aug_embed_w
     avail_h = image_info.aug_embed_h
+    full_w = image_info.aug_w
+    full_h = image_info.aug_h
 
-    # print(needed_w)
-    # print(needed_h)
-    # print("")
-    # print(pleft)
-    # print(ptop)
-    # print(avail_w)
-    # print(avail_h)
-
-    # Just pretend it doesn't exist :-) (TODO)
-    if(avail_w < needed_w):
-        print("BAD")
-        return
-    if(avail_h < needed_h):
-        print("BAD")
-        return
+    # Fix for when we need to go outside the embedded image
+    pleft, avail_w = correct_mosaic_placement(pleft, avail_w, needed_w, full_w)
+    ptop, avail_h = correct_mosaic_placement(ptop, avail_h, needed_h, full_h)
 
     # Basically in reverse to placement
     # top left = start at bottom right
@@ -222,10 +196,27 @@ def place_image_mosaic(placement_image, image, image_info, cut_x, cut_y, i_num, 
         pbot = ptop + needed_h
         pleft = pleft
         ptop = ptop
-        
+
     placement_image[placem_y1:placem_y2, placem_x1:placem_x2] = image[ptop:pbot, pleft:pright]
 
     return
+
+# correct_mosaic_placement
+def correct_mosaic_placement(p, avail, needed, full):
+    corrected_p = p
+    corrected_avail = avail
+
+    # Correction needed
+    if(avail < needed):
+        # Will have some of the padding bleed from the left/top only if needed
+        end = p + needed
+        if(end > full):
+            amount_over = end - full
+            corrected_p -= amount_over
+
+        corrected_avail = needed
+
+    return corrected_p, corrected_avail
 
 ##### IMAGE JITTER #####
 def jitter_image(image, jitter, resize_coef, target_dim, annotations=None, image_info=None):
@@ -411,7 +402,6 @@ def letterbox_image(image, target_dim, annotations=None, image_info=None):
     img_w = image.shape[CV2_W_DIM]
     img_h = image.shape[CV2_H_DIM]
     embed_h, embed_w, start_y, start_x = get_letterbox_image_embedding(img_h, img_w, target_dim)
-
     end_y = start_y + embed_h
     end_x = start_x + embed_w
 
@@ -430,13 +420,23 @@ def letterbox_image(image, target_dim, annotations=None, image_info=None):
 
     # Adding letterbox offsets to annotations
     if(annotations is not None):
-        start_x_norm = start_x / target_dim
-        start_y_norm = start_y / target_dim
+        # Map to embedding image
+        annotations[..., ANN_BBOX_X1] *= embed_w
+        annotations[..., ANN_BBOX_Y1] *= embed_h
+        annotations[..., ANN_BBOX_X2] *= embed_w
+        annotations[..., ANN_BBOX_Y2] *= embed_h
 
-        annotations[..., ANN_BBOX_X1] += start_x_norm
-        annotations[..., ANN_BBOX_Y1] += start_y_norm
-        annotations[..., ANN_BBOX_X2] += start_x_norm
-        annotations[..., ANN_BBOX_Y2] += start_y_norm
+        # Add offset
+        annotations[..., ANN_BBOX_X1] += start_x
+        annotations[..., ANN_BBOX_Y1] += start_y
+        annotations[..., ANN_BBOX_X2] += start_x
+        annotations[..., ANN_BBOX_Y2] += start_y
+
+        # Normalize based on the full letterbox image
+        annotations[..., ANN_BBOX_X1] /= target_dim
+        annotations[..., ANN_BBOX_Y1] /= target_dim
+        annotations[..., ANN_BBOX_X2] /= target_dim
+        annotations[..., ANN_BBOX_Y2] /= target_dim
 
     # Sets the image topleft offset and the embedding dimensions
     if(image_info is not None):

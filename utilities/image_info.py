@@ -47,6 +47,8 @@ class ImageInfo:
         """
 
         self.aug_image = aug_image
+        self.aug_h = aug_image.shape[CV2_H_DIM]
+        self.aug_w = aug_image.shape[CV2_W_DIM]
 
     # set_offset
     def set_offset(self, pleft, ptop):
