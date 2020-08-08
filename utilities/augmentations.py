@@ -63,9 +63,22 @@ def possible_image_sizings(init_dim, rand_coef, resize_step):
 ##### MOSAIC #####
 # create_mosaic
 def create_mosaic(images, jitter, resize_coef, target_dim, images_annotations=None):
+    """
+    ----------
+    Author: Damon Gwinn (gwinndr)
+    ----------
+    - Creates a mosaic image out of a list of 4 images
+    - Takes a network block as argument and applies given annotations
+    - Width and height given by network block are overrided by target_dim
+    ----------
+    """
 
     if(len(images) != 4):
         print("create_mosaic: Error: Mosaic must be given a list of 4 images")
+        return None
+
+    if((images_annotations is not None) and (len(images_annotations) != len(images))):
+        print("create_mosaic: Error: For mosaic, annotations must be None or a list of 4 images")
         return None
 
     # Create placement image
@@ -130,6 +143,16 @@ def create_mosaic(images, jitter, resize_coef, target_dim, images_annotations=No
 
 # place_image_mosaic
 def place_image_mosaic(placement_image, image, image_info, cut_x, cut_y, i_num, annotations=None):
+    """
+    ----------
+    Author: Damon Gwinn (gwinndr)
+    ----------
+    - Helper for create_mosaic
+    - Places an image on the placement according to mosaic rules
+    - cut_x and cut_y is the dividing point in the image
+    - i_num is the current image number (0-3 inclusive)
+    ----------
+    """
 
     ow = image.shape[CV2_W_DIM]
     oh = image.shape[CV2_H_DIM]
@@ -242,6 +265,22 @@ def place_image_mosaic(placement_image, image, image_info, cut_x, cut_y, i_num, 
 
 # correct_mosaic_placement
 def correct_mosaic_placement(p, avail, needed, full):
+    """
+    ----------
+    Author: Damon Gwinn (gwinndr)
+    ----------
+    - Helper for place_image_mosaic
+    - Corrects given point, p, and available dim, avail, so that avail >= needed
+    - Function may do no corrections if avail >= needed already
+    - Function assumes that full >= needed
+    - Returns corrected p and avail
+    - p: point of embedded image
+    - avail: length of embedded image
+    - needed: required length for mosaic
+    - full: the full length of the augmentation
+    ----------
+    """
+
     corrected_p = p
     corrected_avail = avail
 
@@ -259,6 +298,18 @@ def correct_mosaic_placement(p, avail, needed, full):
 
 ##### IMAGE JITTER #####
 def jitter_image(image, jitter, resize_coef, target_dim, annotations=None, image_info=None):
+    """
+    ----------
+    Author: Damon Gwinn (gwinndr)
+    ----------
+    - Computes image jitter
+    - Jitter value must be a value less that .5 otherwise it could crash due to negative image dimensions
+    - resize_coef should be a value greater than 0 and less than 2
+    - This function computes get_jitter_embedding information and passes it to jitter_image_precalc
+    - See jitter_image_precalc for more info.
+    ----------
+    """
+
     ow = image.shape[CV2_W_DIM]
     oh = image.shape[CV2_H_DIM]
 
@@ -269,6 +320,18 @@ def jitter_image(image, jitter, resize_coef, target_dim, annotations=None, image
 
 # jitter_image_precalc
 def jitter_image_precalc(image, precalc, target_dim, annotations=None, image_info=None):
+    """
+    ----------
+    Author: Damon Gwinn (gwinndr)
+    ----------
+    - Computes image jitter based on precalculated values from get_jitter_embedding
+    - Jitter will create a new image of varying dimensions based on precalc values
+    - Image may be a smaller image embedded in a bigger image
+    - Result is resized to target_dim
+    - Returns augmented image
+    ----------
+    """
+
     if(image.dtype == np.uint8):
         image = image_uint8_to_float(image)
 
@@ -353,6 +416,16 @@ def jitter_image_precalc(image, precalc, target_dim, annotations=None, image_inf
 
 # get_jitter_embedding
 def get_jitter_embedding(width, height, jitter, resize):
+    """
+    ----------
+    Author: Damon Gwinn (gwinndr)
+    ----------
+    - Computes randomized jitter embedding based on source width and height and jitter-resize coefficients
+    - jitter should be a value greater than 0 and less than .5
+    - resize should be a value greater than 0 and less than 2
+    ----------
+    """
+
     # Jitter allowance
     dw = width * jitter
     dh = height * jitter
@@ -387,16 +460,41 @@ def get_jitter_embedding(width, height, jitter, resize):
 
 ##### HSV SHIFTING #####
 # hsv_shift_image
-def hsv_shift_image(image, hue, saturation, exposure, image_info=None, precalc=None):
+def hsv_shift_image(image, hue, saturation, exposure, image_info=None):
+    """
+    ----------
+    Author: Damon Gwinn (gwinndr)
+    ----------
+    - Computes an hsv shifted image
+    - Hue should be a value less than 1
+    - Saturation and exposure should be values greater than 1 and less than 2
+    - See hsv_shift_image_precalc for more info.
+    ----------
+    """
+
+    precalc = get_hsv_shifting(hue, saturation, exposure)
+    new_img = hsv_shift_image_precalc(image, precalc, image_info=image_info)
+
+    return new_img
+
+# hsv_shift_image_precalc
+def hsv_shift_image_precalc(image, precalc, image_info=None):
+    """
+    ----------
+    Author: Damon Gwinn (gwinndr)
+    ----------
+    - Computes an hsv shifted image based on precalculated values
+    - dhue * CV2_HSV_H_MAX is added as a shift to hue
+    - dsat and dexp are multiplied as a scaling to sat and exp
+    - hsv shifting does not affect annotations
+    ----------
+    """
 
     # Very important this conversion happens, otherwise CV2_HSV_H_MAX is wrong
     if(image.dtype == np.uint8):
         image = image_uint8_to_float(image)
 
-    if(precalc is None):
-        dhue, dsat, dexp = get_hsv_shifting(hue, saturation, exposure)
-    else:
-        dhue, dsat, dexp = precalc
+    dhue, dsat, dexp = precalc
 
     hue_term = dhue * CV2_HSV_H_MAX
 
@@ -424,6 +522,16 @@ def hsv_shift_image(image, hue, saturation, exposure, image_info=None, precalc=N
 
 # get_hsv_shifting
 def get_hsv_shifting(hue, saturation, exposure):
+    """
+    ----------
+    Author: Damon Gwinn (gwinndr)
+    ----------
+    - Computes randomized hsv coefficients
+    - hue should be a value less than 1
+    - Saturation and exposure should be values greater than 1 and less than 2
+    ----------
+    """
+
     dhue = random.uniform(-hue, hue);
     dsat = rand_scale(saturation);
     dexp = rand_scale(exposure);

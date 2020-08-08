@@ -37,6 +37,20 @@ def correct_boxes(boxes, ow, oh, nw, nh,
     o_offs_x=None, o_offs_y=None, o_embed_w=None, o_embed_h=None,
     n_offs_x=None, n_offs_y=None, n_embed_w=None, n_embed_h=None,
     boxes_normalized=False):
+    """
+    ----------
+    Author: Damon Gwinn (gwinndr)
+    ----------
+    - Maps bounding boxes from one image to another
+    - Used to map annotations to an augmented image, or map detections back to the original image
+    - ow, oh: The width and height of the source
+    - nw, nh: The width and height of the target
+    - (optional) o_offs_x, o_offs_y: Image offset for the source (image embedded within an image = imageception)
+    - (optional) o_embed_w, o_embed_h: Width and height of the embedded image for the source
+    - (optional) n_offs_x, ..., n_embed_h: Same as o but for the target
+    - (optional) boxes_normalized: Flag for if the given boxes are normalized according to ow and oh (will return normalized result)
+    ----------
+    """
 
     o_offs_x = 0.0 if o_offs_x is None else o_offs_x
     o_offs_y = 0.0 if o_offs_y is None else o_offs_y
@@ -105,6 +119,20 @@ def correct_boxes(boxes, ow, oh, nw, nh,
 
 # crop_boxes
 def crop_boxes(boxes, ow, oh, crop_left, crop_top, crop_w, crop_h, boxes_normalized=False):
+    """
+    ----------
+    Author: Damon Gwinn (gwinndr)
+    ----------
+    - Crops out bounding boxes
+    - Essentially smushes bboxes to fit within a certain crop
+    - Some returned boxes may be invalid due to being outside the crop (use is_valid_box)
+    - ow, oh: The width and height of the source
+    - crop_left, crop_top: The top left point for the start of the crop
+    - crop_w, crop_h: The width and height of the crop
+    - (optional) boxes_normalized: Flag for if the given boxes are normalized according to ow and oh (will return normalized result)
+    ----------
+    """
+
     boxes = boxes.clone()
 
     x1 = boxes[..., BBOX_X1]
@@ -145,6 +173,15 @@ def crop_boxes(boxes, ow, oh, crop_left, crop_top, crop_w, crop_h, boxes_normali
 
 # is_valid_box
 def is_valid_box(boxes, img_w, img_h, boxes_normalized=False):
+    """
+    ----------
+    Author: Damon Gwinn (gwinndr)
+    ----------
+    - Validates that all boxes have an area > 0 and lie on the image plane
+    - Returns a boolean mask (can use boxes[is_valid])
+    ----------
+    """
+
     boxes = boxes.clone()
 
     x1 = boxes[..., BBOX_X1]
@@ -170,7 +207,7 @@ def is_valid_box(boxes, img_w, img_h, boxes_normalized=False):
     torch.clamp(x2, min=0, max=img_w, out=x2)
     torch.clamp(y2, min=0, max=img_h, out=y2)
 
-    # If clamp results in equal dimensions (box off image or just plain wonky), it's invalid
+    # If clamp results in equal dimensions (box off image or has 0 area), it's invalid
     ne_x = (x1 != x2)
     ne_y = (y1 != y2)
 

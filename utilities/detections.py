@@ -33,8 +33,6 @@ def correct_detections(detections, image_info):
     Author: Damon Gwinn (gwinndr)
     ----------
     - Maps detections from the preprocessed input tensor back to the original image
-    - If input not letterboxed, image_info start dims should be 0 and embed dims equal to network input dims
-    - clamp_detections forces bboxes to lie within the image bounds
     ----------
     """
 
