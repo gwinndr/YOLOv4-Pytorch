@@ -4,6 +4,7 @@ import numpy as np
 import random
 
 from utilities.constants import *
+from utilities.bboxes import correct_boxes, crop_boxes
 from utilities.rando import rand_scale
 from utilities.images import image_float_to_uint8, image_uint8_to_float
 from utilities.image_info import ImageInfo
@@ -219,17 +220,17 @@ def correct_mosaic_placement(p, avail, needed, full):
     return corrected_p, corrected_avail
 
 ##### IMAGE JITTER #####
-def jitter_image(image, jitter, resize_coef, target_dim, annotations=None, image_info=None):
+def jitter_image(image, jitter, resize_coef, target_dim, annotations=None):
     ow = image.shape[CV2_W_DIM]
     oh = image.shape[CV2_H_DIM]
 
     precalc = get_jitter_embedding(ow, oh, jitter, resize_coef)
-    jitter_img = jitter_image_precalc(image, precalc, target_dim, annotations=annotations, image_info=image_info)
+    jitter_img = jitter_image_precalc(image, precalc, target_dim, annotations=annotations)
 
     return jitter_img
 
 # jitter_image_precalc
-def jitter_image_precalc(image, precalc, target_dim, annotations=None, image_info=None):
+def jitter_image_precalc(image, precalc, target_dim, annotations=None):
     if(image.dtype == np.uint8):
         image = image_uint8_to_float(image)
 
@@ -285,19 +286,23 @@ def jitter_image_precalc(image, precalc, target_dim, annotations=None, image_inf
     new_img = image_resize(new_img, new_dim)
 
     # Setting annotations
-    # if(annotations is not None):
-
-
-    # Setting image info
-    if(image_info is not None):
+    if(annotations is not None):
         start_x = round(dst_x1_norm * target_dim)
         start_y = round(dst_y1_norm * target_dim)
         embed_w = round(dst_w_norm * target_dim)
         embed_h = round(dst_h_norm * target_dim)
 
-        image_info.set_augmentation(new_img)
-        image_info.set_offset(start_x, start_y)
-        image_info.set_embedding_dimensions(embed_w, embed_h)
+        boxes = annotations[..., ANN_BBOX_X1:ANN_BBOX_Y2+1]
+
+        # First crop out the boxes from the image
+        boxes = crop_boxes(boxes, ow, oh, crop_x1, crop_y1, crop_w, crop_h, boxes_normalized=True)
+
+        # Then map to image within dst
+        boxes = correct_boxes(boxes, crop_w, crop_h, target_dim, target_dim,
+                    n_offs_x=start_x, n_offs_y=start_y, n_embed_w=embed_w, n_embed_h=embed_h,
+                    boxes_normalized=True)
+
+        annotations[..., ANN_BBOX_X1:ANN_BBOX_Y2+1] = boxes
 
     return new_img
 
@@ -420,23 +425,11 @@ def letterbox_image(image, target_dim, annotations=None, image_info=None):
 
     # Adding letterbox offsets to annotations
     if(annotations is not None):
-        # Map to embedding image
-        annotations[..., ANN_BBOX_X1] *= embed_w
-        annotations[..., ANN_BBOX_Y1] *= embed_h
-        annotations[..., ANN_BBOX_X2] *= embed_w
-        annotations[..., ANN_BBOX_Y2] *= embed_h
-
-        # Add offset
-        annotations[..., ANN_BBOX_X1] += start_x
-        annotations[..., ANN_BBOX_Y1] += start_y
-        annotations[..., ANN_BBOX_X2] += start_x
-        annotations[..., ANN_BBOX_Y2] += start_y
-
-        # Normalize based on the full letterbox image
-        annotations[..., ANN_BBOX_X1] /= target_dim
-        annotations[..., ANN_BBOX_Y1] /= target_dim
-        annotations[..., ANN_BBOX_X2] /= target_dim
-        annotations[..., ANN_BBOX_Y2] /= target_dim
+        boxes = annotations[..., ANN_BBOX_X1:ANN_BBOX_Y2+1]
+        boxes = correct_boxes(boxes, img_w, img_h, target_dim, target_dim,
+                    n_offs_x=start_x, n_offs_y=start_y, n_embed_w=embed_w, n_embed_h=embed_h,
+                    boxes_normalized=True)
+        annotations[..., ANN_BBOX_X1:ANN_BBOX_Y2+1] = boxes
 
     # Sets the image topleft offset and the embedding dimensions
     if(image_info is not None):

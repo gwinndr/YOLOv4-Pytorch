@@ -32,6 +32,152 @@ def predictions_to_bboxes(preds):
 
     return bboxes
 
+# correct_boxes
+def correct_boxes(boxes, ow, oh, nw, nh,
+    o_offs_x=None, o_offs_y=None, o_embed_w=None, o_embed_h=None,
+    n_offs_x=None, n_offs_y=None, n_embed_w=None, n_embed_h=None,
+    boxes_normalized=False):
+
+    o_offs_x = 0.0 if o_offs_x is None else o_offs_x
+    o_offs_y = 0.0 if o_offs_y is None else o_offs_y
+    o_embed_w = ow if o_embed_w is None else o_embed_w
+    o_embed_h = oh if o_embed_h is None else o_embed_h
+
+    n_offs_x = 0.0 if n_offs_x is None else n_offs_x
+    n_offs_y = 0.0 if n_offs_y is None else n_offs_y
+    n_embed_w = nw if n_embed_w is None else n_embed_w
+    n_embed_h = nh if n_embed_h is None else n_embed_h
+
+    boxes = boxes.clone()
+
+    x1 = boxes[..., BBOX_X1]
+    y1 = boxes[..., BBOX_Y1]
+    x2 = boxes[..., BBOX_X2]
+    y2 = boxes[..., BBOX_Y2]
+
+    ### ORIGINAL IMAGE ADJUSTMENTS ###
+    # Map to full original image
+    if(boxes_normalized):
+        x1 *= ow
+        y1 *= oh
+        x2 *= ow
+        y2 *= oh
+
+    # Move embedded image back to top left
+    x1 -= o_offs_x
+    y1 -= o_offs_y
+    x2 -= o_offs_x
+    y2 -= o_offs_y
+
+    # Normalize by the embedded image
+    x1 /= o_embed_w
+    y1 /= o_embed_h
+    x2 /= o_embed_w
+    y2 /= o_embed_h
+
+    ### NEW IMAGE ADJUSTMENTS (inverse of original) ###
+    # Map to image embedded within
+    x1 *= n_embed_w
+    y1 *= n_embed_h
+    x2 *= n_embed_w
+    y2 *= n_embed_h
+
+    # Add offset
+    x1 += n_offs_x
+    y1 += n_offs_y
+    x2 += n_offs_x
+    y2 += n_offs_y
+
+    # Clamp to lie within image
+    torch.clamp(x1, min=0, max=nw, out=x1)
+    torch.clamp(y1, min=0, max=nh, out=y1)
+    torch.clamp(x2, min=0, max=nw, out=x2)
+    torch.clamp(y2, min=0, max=nh, out=y2)
+
+    # Normalize by the full image
+    if(boxes_normalized):
+        x1 /= nw
+        y1 /= nh
+        x2 /= nw
+        y2 /= nh
+
+    return boxes
+
+# crop_boxes
+def crop_boxes(boxes, ow, oh, crop_left, crop_top, crop_w, crop_h, boxes_normalized=False):
+    boxes = boxes.clone()
+
+    x1 = boxes[..., BBOX_X1]
+    y1 = boxes[..., BBOX_Y1]
+    x2 = boxes[..., BBOX_X2]
+    y2 = boxes[..., BBOX_Y2]
+
+    crop_right = crop_left + crop_w
+    crop_bot = crop_top + crop_h
+
+    # Map to original image
+    if(boxes_normalized):
+        x1 *= ow
+        y1 *= oh
+        x2 *= ow
+        y2 *= oh
+
+    # Clamp to lie within crop
+    torch.clamp(x1, min=crop_left, max=crop_right, out=x1)
+    torch.clamp(y1, min=crop_top, max=crop_bot, out=y1)
+    torch.clamp(x2, min=crop_left, max=crop_right, out=x2)
+    torch.clamp(y2, min=crop_top, max=crop_bot, out=y2)
+
+    # Move to top left
+    x1 -= crop_left
+    y1 -= crop_top
+    x2 -= crop_left
+    y2 -= crop_top
+
+    # Normalize by the cropped image
+    if(boxes_normalized):
+        x1 /= crop_w
+        y1 /= crop_h
+        x2 /= crop_w
+        y2 /= crop_h
+
+    return boxes
+
+# is_valid_box
+def is_valid_box(boxes, img_w, img_h, boxes_normalized=False):
+    boxes = boxes.clone()
+
+    x1 = boxes[..., BBOX_X1]
+    y1 = boxes[..., BBOX_Y1]
+    x2 = boxes[..., BBOX_X2]
+    y2 = boxes[..., BBOX_Y2]
+
+    if(boxes_normalized):
+        x1 *= img_w
+        y1 *= img_h
+        x2 *= img_w
+        y2 *= img_h
+
+    # Round to nearest pixel
+    x1 = torch.round(x1)
+    y1 = torch.round(y1)
+    x2 = torch.round(x2)
+    y2 = torch.round(y2)
+
+    # Clamp within image
+    torch.clamp(x1, min=0, max=img_w, out=x1)
+    torch.clamp(y1, min=0, max=img_h, out=y1)
+    torch.clamp(x2, min=0, max=img_w, out=x2)
+    torch.clamp(y2, min=0, max=img_h, out=y2)
+
+    # If clamp results in equal dimensions (box off image or just plain wonky), it's invalid
+    ne_x = (x1 != x2)
+    ne_y = (y1 != y2)
+
+    is_valid = torch.logical_and(ne_x, ne_y)
+
+    return is_valid
+
 # bbox_iou_one_to_many
 def bbox_iou_many_to_many(boxes_a, boxes_b):
     """

@@ -2,7 +2,7 @@ import torch
 
 from .constants import *
 
-from utilities.bboxes import predictions_to_bboxes
+from utilities.bboxes import predictions_to_bboxes, correct_boxes, is_valid_box
 
 # extract_detections
 def extract_detections(all_preds, obj_thresh):
@@ -27,7 +27,7 @@ def extract_detections(all_preds, obj_thresh):
     return all_detections
 
 # correct_detections
-def correct_detections(detections, image_info, clamp_detections=False):
+def correct_detections(detections, image_info):
     """
     ----------
     Author: Damon Gwinn (gwinndr)
@@ -38,35 +38,25 @@ def correct_detections(detections, image_info, clamp_detections=False):
     ----------
     """
 
-    dets_x1 = detections[..., DETECTION_X1]
-    dets_y1 = detections[..., DETECTION_Y1]
-    dets_x2 = detections[..., DETECTION_X2]
-    dets_y2 = detections[..., DETECTION_Y2]
+    ow = image_info.aug_w
+    oh = image_info.aug_h
+    nw = image_info.org_w
+    nh = image_info.org_h
+    offs_x = image_info.aug_pleft
+    offs_y = image_info.aug_ptop
+    embed_w = image_info.aug_embed_w
+    embed_h = image_info.aug_embed_h
 
-    # Move image back to top left
-    dets_x1 -= image_info.aug_pleft
-    dets_y1 -= image_info.aug_ptop
-    dets_x2 -= image_info.aug_pleft
-    dets_y2 -= image_info.aug_ptop
+    boxes = detections[..., DETECTION_X1:DETECTION_Y2+1]
+    boxes = correct_boxes(boxes, ow, oh, nw, nh,
+                o_offs_x=offs_x, o_offs_y=offs_y, o_embed_w=embed_w, o_embed_h=embed_h,
+                boxes_normalized=False)
 
-    # Normalize by the image within
-    dets_x1 /= image_info.aug_embed_w
-    dets_y1 /= image_info.aug_embed_h
-    dets_x2 /= image_info.aug_embed_w
-    dets_y2 /= image_info.aug_embed_h
+    is_valid = is_valid_box(boxes, nw, nh, boxes_normalized=False)
+    detections = detections[is_valid]
+    boxes = boxes[is_valid]
 
-    # Map back to original image dimensions
-    dets_x1 *= image_info.org_w
-    dets_y1 *= image_info.org_h
-    dets_x2 *= image_info.org_w
-    dets_y2 *= image_info.org_h
-
-    # Clamping dims to lie within the image
-    if(clamp_detections):
-        torch.clamp(dets_x1, min=0, max=image_info.org_w, out=dets_x1)
-        torch.clamp(dets_y1, min=0, max=image_info.org_h, out=dets_y1)
-        torch.clamp(dets_x2, min=0, max=image_info.org_w, out=dets_x2)
-        torch.clamp(dets_y2, min=0, max=image_info.org_h, out=dets_y2)
+    detections[..., DETECTION_X1:DETECTION_Y2+1] = boxes
 
     return detections
 
