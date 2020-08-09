@@ -29,6 +29,9 @@ def augment_image(image, netblock, target_dim, annotations=None, image_info=None
 
     aug_img = image.copy()
 
+    if(image_info is None):
+        image_info = ImageInfo(image)
+
     # First jitter
     if(jitter):
         aug_img = jitter_image(aug_img, netblock.jitter, netblock.resize, target_dim,
@@ -357,6 +360,7 @@ def possible_image_sizings(init_dim, rand_coef, resize_step):
     dim_list = np.arange(min_dim, max_dim, resize_step, dtype=np.int32).tolist()
 
     return dim_list
+
 
 ##### IMAGE JITTER #####
 def jitter_image(image, jitter, resize_coef, target_dim, annotations=None, image_info=None):
