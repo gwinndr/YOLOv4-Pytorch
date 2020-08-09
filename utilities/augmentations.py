@@ -11,6 +11,18 @@ from utilities.image_info import ImageInfo
 
 ##### AUGMENTATION FOR SINGLE IMAGE #####
 def augment_image(image, netblock, target_dim, annotations=None, jitter=True, hsv=True, flip=True):
+    """
+    ----------
+    Author: Damon Gwinn (gwinndr)
+    ----------
+    - Augments a single image
+    - Takes a network block as argument and maps given annotations to the new image
+    - Width and height given by network block are overrided by target_dim
+    - Can toggle jitter, hsv, and flip args to False to force those augmentations not to run
+    - Returns augmented image and image_info
+    ----------
+    """
+
     image_info = ImageInfo(image)
 
     aug_img = image_info.aug_image
@@ -564,6 +576,15 @@ def get_hsv_shifting(hue, saturation, exposure):
 
 ##### IMAGE FLIP #####
 def flip_image(image, annotations=None, image_info=None):
+    """
+    ----------
+    Author: Damon Gwinn (gwinndr)
+    ----------
+    - Horizontally flips an image and maps annotations to the new image
+    - Also fixes image_info offset information to reflect the flip
+    ----------
+    """
+
     new_img = cv2.flip(image, CV2_FLIP_HORIZONTAL)
 
     # Annotations
@@ -604,8 +625,6 @@ def flip_image(image, annotations=None, image_info=None):
         pleft -= embed_w
 
         image_info.aug_pleft = pleft
-
-
         image_info.set_augmentation(new_img)
 
 
