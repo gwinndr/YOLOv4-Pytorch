@@ -95,6 +95,9 @@ def main():
         print("Detector trained and evaluated on MS-COCO", file=info_stream)
         print("cfg:", args.cfg, file=info_stream)
         print("weights:", args.weights, file=info_stream)
+        print("batches_seen:", round(model.imgs_seen / net.batch), file=info_stream)
+        print("augment:", not args.no_augment, file=info_stream)
+        print("letterbox:", args.letterbox, file=info_stream)
         print("obj_thresh:", args.obj_thresh, file=info_stream)
         print("max_imgs:", args.max_imgs, file=info_stream)
         print(net.to_string(), file=info_stream)
@@ -128,8 +131,11 @@ def main():
 
     print("Building datasets:")
     init_dim = net.width
-    train_set = CocoDataset(train_imgs, input_dim=init_dim, letterbox=True, annotation_file=train_anns)
-    val_set = CocoDataset(val_imgs, input_dim=init_dim, letterbox=True, annotation_file=val_anns)
+    augment = not args.no_augment
+    letterbox = args.letterbox
+
+    train_set = CocoDataset(train_imgs, net, init_dim, augment=augment, annotation_file=train_anns)
+    val_set = CocoDataset(val_imgs, net, init_dim, letterbox=letterbox, annotation_file=val_anns)
     print("")
 
     print("Building BatchLoader...")

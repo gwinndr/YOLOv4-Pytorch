@@ -33,6 +33,8 @@ def parse_train_args():
     parser.add_argument("-weights", type=str, default="./weights/csdarknet53-omega.conv.105", help="Yolo pre-trained weights file. Can also be weights from a training in progress.")
 
     parser.add_argument("-obj_thresh", type=float, default=OBJ_THRESH_DEFAULT, help="Confidence threshold for filtering out predictions (validation)")
+    parser.add_argument("--no_augment", action="store_true", help="Turns off image augmentations while training (lower mAP and mAR)")
+    parser.add_argument("--letterbox", action="store_true", help="Letterboxes input when evaluating")
 
     parser.add_argument("--no_ask", action="store_true", help="Don't ask when you're about to write to a results dir that already exists (your funeral).")
     parser.add_argument("--print_network", action="store_true", help="Print out each layer in the darknet model with their hyperparameters")
