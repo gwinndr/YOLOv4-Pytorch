@@ -325,11 +325,13 @@ def image_resize(image, target_dim, image_info=None):
     """
 
     new_img = cv2.resize(image, target_dim, interpolation=CV2_INTERPOLATION)
+    nw = new_img.shape[CV2_W_DIM]
+    nh = new_img.shape[CV2_H_DIM]
 
     # Setting dimension information for new image
     if(image_info is not None):
         image_info.set_augmentation(new_img)
-        image_info.set_embedding_dimensions(new_w, new_h)
+        image_info.set_embedding_dimensions(nw, nh)
 
 
     return new_img
