@@ -71,7 +71,7 @@ def main():
         max_imgs = args.max_imgs
         obj_thresh = args.obj_thresh
 
-        val_dataset = CocoDataset(image_dir, model.net_block, input_dim=network_dim, letterbox=letterbox, annotation_file=ann_file)
+        val_dataset = CocoDataset(image_dir, model.net_block, network_dim, letterbox=letterbox, annotation_file=ann_file)
         print("")
 
         coco_evaluate_bbox(val_dataset, model, obj_thresh, max_imgs=max_imgs)
