@@ -585,6 +585,10 @@ def hsv_shift_image_precalc(image, precalc, image_info=None):
     hsv = cv2.merge([h, s, v])
     new_img = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
 
+    # Fix for if values go over 1 or under 0
+    new_img[new_img > 1.0] = 1.0
+    new_img[new_img < 0.0] = 0.0
+
     if(image_info is not None):
         image_info.set_augmentation(new_img)
 
