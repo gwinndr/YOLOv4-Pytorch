@@ -9,56 +9,28 @@ from utilities.rando import rand_scale
 from utilities.images import image_float_to_uint8, image_uint8_to_float
 from utilities.image_info import ImageInfo
 
-##### IMAGE RESIZING #####
-# image_resize
-def image_resize(image, target_dim, image_info=None):
-    """
-    ----------
-    Author: Damon Gwinn (gwinndr)
-    ----------
-    - Resizes a cv2 image to the desired dimensions
-    - target_dim should be of the form (width, height)
-    - Annotations should be already normalized so image resizing does not have an effect
-    - Interpolation given by CV2_INTERPOLATION in constants.py
-    ----------
-    """
+##### AUGMENTATION FOR SINGLE IMAGE #####
+def augment_image(image, netblock, target_dim, annotations=None, jitter=True, hsv=True, flip=True):
+    image_info = ImageInfo(image)
 
-    new_img = cv2.resize(image, target_dim, interpolation=CV2_INTERPOLATION)
+    aug_img = image_info.aug_image
 
-    # Setting dimension information for new image
-    if(image_info is not None):
-        image_info.set_augmentation(new_img)
-        image_info.set_embedding_dimensions(new_w, new_h)
+    # First jitter
+    if(jitter):
+        aug_img = jitter_image(aug_img, netblock.jitter, netblock.resize, target_dim,
+                    annotations=annotations, image_info=image_info)
 
+    # Then hsv
+    if(hsv):
+        aug_img = hsv_shift_image(aug_img, netblock.hue, netblock.saturation, netblock.exposure,
+                    image_info=image_info)
 
-    return new_img
+    # Finally, flip with half probability
+    flip = (flip and netblock.flip and bool(random.randint(0,1)))
+    if(flip):
+        aug_img = flip_image(aug_img, annotations=annotations, image_info=image_info)
 
-# possible_image_sizings
-def possible_image_sizings(init_dim, rand_coef, resize_step):
-    """
-    ----------
-    Author: Damon Gwinn (gwinndr)
-    ----------
-    - Computes a list of possible image resizings based on the initial network dimensions and the rand_coef
-    - List is in order from smallest to largest
-    - The rand_coef is a float value greater than 1.0 that defines how far the image sizing is
-      allowed to stray from the initial sizing
-    - The resize_step is equivalent to the network stride (32 for yolov4 and yolov3 for example)
-    ----------
-    """
-
-    max_scale = rand_coef
-    min_scale = 1.0/max_scale
-
-    max_dim = round(max_scale * init_dim / resize_step + 1) * resize_step;
-    min_dim = round(min_scale * init_dim / resize_step + 1) * resize_step;
-
-    # np.arange stop is non-inclusive
-    max_dim += resize_step
-
-    dim_list = np.arange(min_dim, max_dim, resize_step, dtype=np.int32).tolist()
-
-    return dim_list
+    return aug_img, image_info
 
 ##### MOSAIC #####
 # create_mosaic
@@ -295,6 +267,58 @@ def correct_mosaic_placement(p, avail, needed, full):
         corrected_avail = needed
 
     return corrected_p, corrected_avail
+
+
+##### IMAGE RESIZING #####
+# image_resize
+def image_resize(image, target_dim, image_info=None):
+    """
+    ----------
+    Author: Damon Gwinn (gwinndr)
+    ----------
+    - Resizes a cv2 image to the desired dimensions
+    - target_dim should be of the form (width, height)
+    - Annotations should be already normalized so image resizing does not have an effect
+    - Interpolation given by CV2_INTERPOLATION in constants.py
+    ----------
+    """
+
+    new_img = cv2.resize(image, target_dim, interpolation=CV2_INTERPOLATION)
+
+    # Setting dimension information for new image
+    if(image_info is not None):
+        image_info.set_augmentation(new_img)
+        image_info.set_embedding_dimensions(new_w, new_h)
+
+
+    return new_img
+
+# possible_image_sizings
+def possible_image_sizings(init_dim, rand_coef, resize_step):
+    """
+    ----------
+    Author: Damon Gwinn (gwinndr)
+    ----------
+    - Computes a list of possible image resizings based on the initial network dimensions and the rand_coef
+    - List is in order from smallest to largest
+    - The rand_coef is a float value greater than 1.0 that defines how far the image sizing is
+      allowed to stray from the initial sizing
+    - The resize_step is equivalent to the network stride (32 for yolov4 and yolov3 for example)
+    ----------
+    """
+
+    max_scale = rand_coef
+    min_scale = 1.0/max_scale
+
+    max_dim = round(max_scale * init_dim / resize_step + 1) * resize_step;
+    min_dim = round(min_scale * init_dim / resize_step + 1) * resize_step;
+
+    # np.arange stop is non-inclusive
+    max_dim += resize_step
+
+    dim_list = np.arange(min_dim, max_dim, resize_step, dtype=np.int32).tolist()
+
+    return dim_list
 
 ##### IMAGE JITTER #####
 def jitter_image(image, jitter, resize_coef, target_dim, annotations=None, image_info=None):
@@ -537,6 +561,55 @@ def get_hsv_shifting(hue, saturation, exposure):
     dexp = rand_scale(exposure);
 
     return dhue, dsat, dexp
+
+##### IMAGE FLIP #####
+def flip_image(image, annotations=None, image_info=None):
+    new_img = cv2.flip(image, CV2_FLIP_HORIZONTAL)
+
+    # Annotations
+    if(annotations is not None):
+        x1 = annotations[..., ANN_BBOX_X1]
+        x2 = annotations[..., ANN_BBOX_X2]
+
+        # Make the center of the image at position 0
+        x1 -= 0.5
+        x2 -= 0.5
+
+        # Flip their position on this new (-0.5 -> 0.5) scale
+        x1 = -x1
+        x2 = -x2
+
+        # Map back to (0 -> 1)
+        x1 += 0.5
+        x2 += 0.5
+
+        # Swap because x1 is now greater than x2
+        temp = x1
+        x1 = x2
+        x2 = temp
+
+        annotations[..., ANN_BBOX_X1] = x1
+        annotations[..., ANN_BBOX_X2] = x2
+
+    # image_info
+    if(image_info is not None):
+        half_ow = round(image.shape[CV2_W_DIM] / 2.0)
+        pleft = image_info.aug_pleft
+        embed_w = image_info.aug_embed_w
+
+        # Fixing pleft in a similar way to annotations
+        pleft -= half_ow
+        pleft = -pleft
+        pleft += half_ow
+        pleft -= embed_w
+
+        image_info.aug_pleft = pleft
+
+
+        image_info.set_augmentation(new_img)
+
+
+    return new_img
 
 
 ##### LETTERBOXING #####

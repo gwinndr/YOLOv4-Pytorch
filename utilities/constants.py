@@ -232,6 +232,11 @@ CV2_N_DIMS = 3 # Number of cv2 dimensions
 # If using an image in uint8 form (0-255), then the max h value is 179
 CV2_HSV_H_MAX = 360.0
 
+# Flipping magic
+CV2_FLIP_VERTICAL = 0
+CV2_FLIP_HORIZONTAL = 1
+CV2_FLIP_BOTH = -1
+
 # Offset forces mosaic to not place the cut point more than 20% into any sidek
 MOSAIC_MIN_OFFSET = 0.2
 
