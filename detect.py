@@ -58,7 +58,7 @@ def main():
         network_dim = model.net_block.width
 
         # Letterboxing
-        letterbox = not args.no_letterbox
+        letterbox = args.letterbox
 
         print("Parsing class names...")
         class_names = parse_names(args.class_names)

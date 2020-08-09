@@ -20,7 +20,7 @@ def parse_train_args():
 
     parser.add_argument("-train_imgs", type=str, default="D:/Datasets/COCO/2017/train2017/", help="Folder containing training images")
     parser.add_argument("-train_anns", type=str, default="D:/Datasets/COCO/2017/annotations/instances_train2017.json", help="File containing bbox annotations for training images")
-    
+
     parser.add_argument("-val_imgs", type=str, default="D:/Datasets/COCO/2017/val2017/", help="Folder containing validation images")
     parser.add_argument("-val_anns", type=str, default="D:/Datasets/COCO/2017/annotations/instances_val2017.json", help="File containing bbox annotations for validation images")
     parser.add_argument("-max_imgs", type=int, default=-1, help="Specifies upper bound on the number of validation images processed. If <= 0, all validation images are processed.")
@@ -65,8 +65,8 @@ def parse_detect_args():
     parser.add_argument("-class_names", type=str, default="./configs/coco.names", help="Names for each class index")
 
     parser.add_argument("-obj_thresh", type=float, default=OBJ_THRESH_DEFAULT, help="Confidence threshold for filtering out predictions")
+    parser.add_argument("--letterbox", action="store_true", help="Turns on image input letterboxing")
 
-    parser.add_argument("--no_letterbox", action="store_true", help="Turns off image input letterboxing (degrades detector performance)")
     parser.add_argument("--no_show", action="store_true", help="Does not display output image with detections (ignored if --video)")
 
     parser.add_argument("--print_network", action="store_true", help="Print out each layer in the darknet model with their hyperparameters")
@@ -94,7 +94,7 @@ def parse_evaluate_args():
     parser.add_argument("-weights", type=str, default="./weights/yolov4.weights", help="Yolo weights file")
 
     parser.add_argument("-obj_thresh", type=float, default=OBJ_THRESH_DEFAULT, help="Confidence threshold for filtering out predictions")
-    parser.add_argument("--no_letterbox", action="store_true", help="Turns off image input letterboxing (degrades detector performance)")
+    parser.add_argument("--letterbox", action="store_true", help="Turns on image input letterboxing")
 
     parser.add_argument("--print_network", action="store_true", help="Print out each layer in the darknet model with their hyperparameters")
     parser.add_argument("--force_cpu", action="store_true", help="Forces the model to run on the cpu regardless of cuda status")
