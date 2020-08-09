@@ -10,22 +10,24 @@ from utilities.images import image_float_to_uint8, image_uint8_to_float
 from utilities.image_info import ImageInfo
 
 ##### AUGMENTATION FOR SINGLE IMAGE #####
-def augment_image(image, netblock, target_dim, annotations=None, jitter=True, hsv=True, flip=True):
+def augment_image(image, netblock, target_dim, annotations=None, image_info=None, jitter=True, hsv=True, flip=True):
     """
     ----------
     Author: Damon Gwinn (gwinndr)
     ----------
     - Augments a single image
+    - Given annotations should be normalized
     - Takes a network block as argument and maps given annotations to the new image
     - Width and height given by network block are overrided by target_dim
     - Can toggle jitter, hsv, and flip args to False to force those augmentations not to run
-    - Returns augmented image and image_info
+    - Returns augmented image
     ----------
     """
 
-    image_info = ImageInfo(image)
+    if(image.dtype == np.uint8):
+        image = image_uint8_to_float(image)
 
-    aug_img = image_info.aug_image
+    aug_img = image.copy()
 
     # First jitter
     if(jitter):
@@ -42,18 +44,28 @@ def augment_image(image, netblock, target_dim, annotations=None, jitter=True, hs
     if(flip):
         aug_img = flip_image(aug_img, annotations=annotations, image_info=image_info)
 
-    return aug_img, image_info
+    # Resize if needed
+    aw = aug_img.shape[CV2_W_DIM]
+    ah = aug_img.shape[CV2_H_DIM]
+    if((aw != target_dim) or (ah != target_dim)):
+        aug_img = image_resize(aug_img, (target_dim, target_dim), image_info=image_info)
+
+    return aug_img
+
 
 ##### MOSAIC #####
 # create_mosaic
-def create_mosaic(images, jitter, resize_coef, target_dim, images_annotations=None):
+def create_mosaic(images, netblock, target_dim, images_annotations=None, jitter=True, hsv=True, flip=True):
     """
     ----------
     Author: Damon Gwinn (gwinndr)
     ----------
     - Creates a mosaic image out of a list of 4 images
-    - Takes a network block as argument and applies given annotations
+    - Given annotations should be a list of 4 normalized annotation tensors
+    - Takes a network block as argument and maps given annotations to the new mosaic
+    - Can toggle jitter, hsv, and flip args to False to force those augmentations not to run
     - Width and height given by network block are overrided by target_dim
+    - Returns mosaic and all annotations as one tensor (recommend you fix with is_valid_box)
     ----------
     """
 
@@ -62,7 +74,7 @@ def create_mosaic(images, jitter, resize_coef, target_dim, images_annotations=No
         return None
 
     if((images_annotations is not None) and (len(images_annotations) != len(images))):
-        print("create_mosaic: Error: For mosaic, annotations must be None or a list of 4 images")
+        print("create_mosaic: Error: For mosaic, annotations must be None or a list of 4")
         return None
 
     # Create placement image
@@ -81,14 +93,13 @@ def create_mosaic(images, jitter, resize_coef, target_dim, images_annotations=No
             img = image_uint8_to_float(img)
 
         annotations = images_annotations[i] if images_annotations is not None else None
-
         image_info = ImageInfo(img)
 
         ow = img.shape[CV2_W_DIM]
         oh = img.shape[CV2_H_DIM]
 
-        # Jitter information
-        pleft, pright, ptop, pbot = get_jitter_embedding(ow, oh, jitter, resize_coef)
+        # Need to jitter separately since we need the embedding information
+        pleft, pright, ptop, pbot = get_jitter_embedding(ow, oh, netblock.jitter, netblock.resize)
 
         # Mosaic force corner
         if(bool(random.randint(0,1))):
@@ -121,9 +132,23 @@ def create_mosaic(images, jitter, resize_coef, target_dim, images_annotations=No
         jitter_embedding = (pleft, pright, ptop, pbot)
         jittered_img = jitter_image_precalc(img, jitter_embedding, target_dim, annotations=annotations, image_info=image_info)
 
-        place_image_mosaic(mosaic_img, jittered_img, image_info, cut_x, cut_y, i, annotations=annotations)
+        # Do rest of the augmentations
+        aug_image = augment_image(jittered_img, netblock, target_dim, annotations=annotations, image_info=image_info, jitter=False)
 
-    return mosaic_img
+        place_image_mosaic(mosaic_img, aug_image, image_info, cut_x, cut_y, i, annotations=annotations)
+
+    # Combining all annotations together into one tensor
+    if(images_annotations is not None):
+        all_annotations = torch.cat(images_annotations, dim=0)
+    else:
+        all_annotations = None
+
+    # Flip the whole image with half probability
+    flip = (flip and netblock.flip and bool(random.randint(0,1)))
+    if(flip):
+        mosaic_img = flip_image(mosaic_img, annotations=all_annotations)
+
+    return mosaic_img, all_annotations
 
 # place_image_mosaic
 def place_image_mosaic(placement_image, image, image_info, cut_x, cut_y, i_num, annotations=None):
@@ -132,6 +157,7 @@ def place_image_mosaic(placement_image, image, image_info, cut_x, cut_y, i_num, 
     Author: Damon Gwinn (gwinndr)
     ----------
     - Helper for create_mosaic
+    - Given annotations should be normalized
     - Places an image on the placement according to mosaic rules
     - cut_x and cut_y is the dividing point in the image
     - i_num is the current image number (0-3 inclusive)
@@ -339,6 +365,7 @@ def jitter_image(image, jitter, resize_coef, target_dim, annotations=None, image
     Author: Damon Gwinn (gwinndr)
     ----------
     - Computes image jitter
+    - Given annotations should be normalized
     - Jitter value must be a value less that .5 otherwise it could crash due to negative image dimensions
     - resize_coef should be a value greater than 0 and less than 2
     - This function computes get_jitter_embedding information and passes it to jitter_image_precalc
@@ -361,6 +388,7 @@ def jitter_image_precalc(image, precalc, target_dim, annotations=None, image_inf
     Author: Damon Gwinn (gwinndr)
     ----------
     - Computes image jitter based on precalculated values from get_jitter_embedding
+    - Given annotations should be normalized
     - Jitter will create a new image of varying dimensions based on precalc values
     - Image may be a smaller image embedded in a bigger image
     - Result is resized to target_dim
@@ -582,6 +610,7 @@ def flip_image(image, annotations=None, image_info=None):
     ----------
     - Horizontally flips an image and maps annotations to the new image
     - Also fixes image_info offset information to reflect the flip
+    - Given annotations should be normalized
     ----------
     """
 
@@ -639,7 +668,7 @@ def letterbox_image(image, target_dim, annotations=None, image_info=None):
     Author: Damon Gwinn (gwinndr)
     ----------
     - Converts the given image into a letterboxed image
-    - Returned image does not share the same memory
+    - Given annotations should be normalized
     - If annotations given, maps the annotations to the new image letterbox (in_place)
     - If image_info given, sets letterbox info needed to map detections back to the original image
     ----------
