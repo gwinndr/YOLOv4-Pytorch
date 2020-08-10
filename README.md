@@ -77,7 +77,7 @@ This will assume COCO is in ./COCO/2017, but you can change this with
 python train.py -train_imgs .../train2017 -train_anns .../instances_train2017.json -val_imgs ... -val_anns ...
 ```
 
-This will create a results folder. In it are info.txt which the information on the training hyperparameter, a copy of the config you're using, and the weights for each epoch. If you run with --epoch_csv and --tensorboard, the repository will additionally write out mAP and mAR to an epoch csv and also write batch loss and epoch evaluation to tensorboard. I recommend you don't use --batch_csv as it uses quite a bit of storage space.
+This will create a results folder. In it are info.txt which lists some training hyperparameters and the [net] block, a copy of the config you're using, and the weights for each epoch. If you run with --epoch_csv and --tensorboard, the repository will additionally write out mAP and mAR to an epoch csv and also write batch loss and epoch evaluation to tensorboard. I recommend you don't use --batch_csv as it uses quite a bit of storage space.
 
 To get the neat visual loss diagrams with tensorboard, run:
 ```
@@ -117,6 +117,8 @@ python evaluate.py -images .../val2017 -anns .../instances_val2017.json
 ## Results
 As I mentioned, training takes forever. I only got a home computer to work with here. I will update this with results when it finishes. Once I got the results that prove I'm not crazy and it actually does work, I'll do the first 1.0 release!
 
+It looked promising mAP-wise when I did some training (about 25 epochs) without any augmentations. I'm pretty optimistic this works.
+
 I'll update with a "results so far" probably in a week or two.
 
 ## Benchmarks
@@ -129,7 +131,7 @@ Does it run as fast as the original Darknet? No... But it's Python vs. C, what d
 As a note though, on my list for the far future, I'd like to do a C++ libtorch inferencer at some point. I'd be curious to see the speed.
 
 ## Contributing
-Yeah, so let me know what you're fixing and why. Follow the style that's throughout and make sure you list yourself as a contributing offer in the corresponding function header. I'd prefer that you have an issue corresponding to your contribution as well.
+Yeah, so let me know what you're fixing and why. Follow the style that's throughout and make sure you list yourself as a contributing author in the corresponding function header. I'd prefer that you have an issue corresponding to your contribution as well.
 
 If you have a DGX or similarly ridiculously expensive piece of supercomputer, please give me benchmarks!
 
