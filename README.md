@@ -14,7 +14,7 @@ Short story. After wrapping up my graduate degree, I had the entire summer off u
 
 This is not the first time I've implemented YOLO, but I couldn't share my other one so here we are. The nice thing about not being on a company's time, is that I could pretty much develop this "from the ground up". Without a time and money crunch, I could really take my time with certain things which is always a plus. Of course this can be a double edged sword because it's really easy to be lazy and do nothing all day when there's no one to wave money in your face, but what can you do? 
 
-Another nice thing, is this time around, I developed this alongside Alexey's Darknet. This was a good idea, as I discovered that I had actually done jitter wrong the first time around (Josh, you should fix this if you haven't). I'm glad to have been able to do everything right this time and have something special for my Github account.
+Another nice thing, is this time around, I developed this alongside Alexey's Darknet. This was a good idea, as I discovered that I had actually done jitter wrong the first time around (Josh, you should fix this if you haven't). All in all, this was fun, and is a nice little gem for my Github account.
 
 TLDR: I was bored, and this is sort of a capstone project to my collegiate career. Hope you like it :-).
 
@@ -33,6 +33,11 @@ The configurations for these models are already included in the configs folder. 
 
 
 ## How to run
+You can change the network input dimensions by editing the width and height parameters in the given config file.   
+Currently, I only support width=height dimensions to keep it simple. 
+
+There's a bunch more stuff (mostly training related) in the config for you to edit if you want.
+
 ### Inferencing:
 Right, so first off, you can get a list of the arguments by running:
 ```
@@ -80,6 +85,17 @@ tensorboard --logdir=./results/default/tensorboard
 ```
 
 It will print out a url that you open in your preferred browser to see all the statistics.
+
+### Training Minibatch Size:
+We don't have infinite memory so some sacrifices have to be made. 
+
+To change the minibatch size, you'll want to open the yolo config and edit the subdivisions parameter.  
+I'll copy Alexey's recommendations here for **subdivision count** based on GPU memory:
+| 8 - 12 GB | 16 - 24 GB | 32 GB |
+|---|---|---|
+| 32 subdivs  | 16 subdivs | 8 subdivs |
+
+If you fall within the gpu range and are still getting out of memory errors, change **random=1.2** in the config (last yolo layer). That fixes it by making the range of input sizes during training a bit smaller. Obviously not the most ideal, but a higher minibatch size is probably better.
 
 ### Evaluate on COCO:
 Evaluation gives you mAP and mAR on a validation set.
