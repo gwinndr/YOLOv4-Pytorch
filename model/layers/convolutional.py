@@ -54,7 +54,7 @@ class ConvolutionalLayer(nn.Module):
 
         # Leaky Relu
         if(activation == "leaky"):
-            leaky = nn.LeakyReLU(negative_slope=YOLO_LEAKY_SLOPE, inplace=True)
+            leaky = nn.LeakyReLU(negative_slope=LEAKY_RELU_SLOPE, inplace=True)
             self.sequential.add_module("leaky_relu", leaky)
 
         # Mish

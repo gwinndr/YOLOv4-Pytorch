@@ -94,7 +94,7 @@ def main():
             if(image is None):
                 return
 
-            detections = inference_on_image(model, image, network_dim, obj_thresh, letterbox)
+            detections = inference_on_image(model, image, network_dim, obj_thresh, letterbox=letterbox)
             output_image = draw_detections(detections, image, class_names, verbose_output=True)
 
             cv2.imwrite(args.output, output_image)

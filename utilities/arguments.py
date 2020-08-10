@@ -32,7 +32,7 @@ def parse_train_args():
     parser.add_argument("-cfg", type=str, default="./configs/yolov4.cfg", help="Yolo configuration file")
     parser.add_argument("-weights", type=str, default="./weights/csdarknet53-omega.conv.105", help="Yolo pre-trained weights file. Can also be weights from a training in progress.")
 
-    parser.add_argument("-obj_thresh", type=float, default=OBJ_THRESH_DEFAULT, help="Confidence threshold for filtering out predictions (validation)")
+    parser.add_argument("-obj_thresh", type=float, default=OBJ_THRESH_DEF, help="Confidence threshold for filtering out predictions (validation)")
     parser.add_argument("--no_augment", action="store_true", help="Turns off image augmentations while training (lower mAP and mAR)")
     parser.add_argument("--letterbox", action="store_true", help="Letterboxes input when evaluating")
 
@@ -66,7 +66,7 @@ def parse_detect_args():
     parser.add_argument("-weights", type=str, default="./weights/yolov4.weights", help="Yolo weights file")
     parser.add_argument("-class_names", type=str, default="./configs/coco.names", help="Names for each class index")
 
-    parser.add_argument("-obj_thresh", type=float, default=OBJ_THRESH_DEFAULT, help="Confidence threshold for filtering out predictions")
+    parser.add_argument("-obj_thresh", type=float, default=OBJ_THRESH_DEF, help="Confidence threshold for filtering out predictions")
     parser.add_argument("--letterbox", action="store_true", help="Turns on image input letterboxing")
 
     parser.add_argument("--no_show", action="store_true", help="Does not display output image with detections (ignored if --video)")
@@ -95,7 +95,7 @@ def parse_evaluate_args():
     parser.add_argument("-cfg", type=str, default="./configs/yolov4.cfg", help="Yolo configuration file")
     parser.add_argument("-weights", type=str, default="./weights/yolov4.weights", help="Yolo weights file")
 
-    parser.add_argument("-obj_thresh", type=float, default=OBJ_THRESH_DEFAULT, help="Confidence threshold for filtering out predictions")
+    parser.add_argument("-obj_thresh", type=float, default=OBJ_THRESH_DEF, help="Confidence threshold for filtering out predictions")
     parser.add_argument("--letterbox", action="store_true", help="Turns on image input letterboxing")
 
     parser.add_argument("--print_network", action="store_true", help="Print out each layer in the darknet model with their hyperparameters")

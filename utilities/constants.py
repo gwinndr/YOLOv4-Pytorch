@@ -1,59 +1,215 @@
-import torch
 import cv2
 import sys
-import multiprocessing
 
-##### TWEAKABLE CONSTANTS #####
-# NN Constants
-YOLO_LEAKY_SLOPE = 0.1 # Slope for leaky relu
-UPSAMPLE_MODE = "nearest" # Type of interpolation for upsampling
-NMS_THRESHOLD = 0.45 # Threshold for considering two bounding boxes overlapping (IOU) for NMS
-CV2_INTERPOLATION = cv2.INTER_LINEAR # Interpolation method for resizing imagesS
-
+##### ACTIVATION SPECIFIC CONSTANTS #####
+LEAKY_RELU_SLOPE = 0.1 # Slope for leaky relu
 MISH_BETA = 1 # The beta for each mish activation
 MISH_THRESHOLD = 20 # The threshold for each mish activation
 
-OBJ_THRESH_DEFAULT = 0.25
 
-LETTERBOX_DEFAULT = True
-INPUT_DIM_DEFAULT = 608
+##### DETECTION EXTRACTION THRESHOLDING #####
+NMS_THRESHOLD = 0.45 # Threshold for considering two bounding boxes overlapping (IOU) for NMS
+OBJ_THRESH_DEF = 0.25
 
-# Random resizing stuff
+
+##### AUGMENTATION CONSTANTS #####
+# Offset forces mosaic to not place the cut point more than 20% into any side
+MOSAIC_MIN_OFFSET = 0.2
+
+LETTERBOX_COLOR = 0.5
+CV2_INTERPOLATION = cv2.INTER_LINEAR # Interpolation method for resizing imagesS
+### END AUGMENTATION CONSTANTS ###
+
+
+##### SUPPORTED POLICIES #####
+POLICY_CONSTANT = "constant"
+POLICY_STEPS = "steps"
+
+
+##### SUPPORTED NMS TYPES #####
+GREEDY_NMS = "greedynms"
+
+
+##### SUPPORTED BBOX LOSS #####
+BBOX_MSE_LOSS = "mse"
+BBOX_CIOU_LOSS = "ciou"
+
+
+##### RANDOM RESIZING CONSTANTS #####
 N_BATCH_TO_RANDOM_RESIZE = 10
 NET_RAND_COEF_IF_1 = 1.4
 
-# Number of times to run the model on a random image as a warmup when benchmarking
-BENCHMARK_N_WARMUPS = 25
+
+##### INPUT CONSTANTS #####
+IMG_CHANNEL_COUNT = 3
+
+INPUT_BATCH_DIM = 0
+INPUT_CHANNEL_DIM = 1
+INPUT_H_DIM = 2
+INPUT_W_DIM = 3
+
+TENSOR_C_DIM = 0
+TENSOR_H_DIM = 1
+TENSOR_W_DIM = 2
+
+BBOX_X1 = 0
+BBOX_Y1 = 1
+BBOX_X2 = 2
+BBOX_Y2 = 3
+BBOX_N_ELEMS = 4
+### END INPUT CONSTANTS ###
+
+
+##### CV2 CONSTANTS #####
+CV2_H_DIM = 0
+CV2_W_DIM = 1
+CV2_C_DIM = 2
+CV2_N_DIMS = 3 # Number of cv2 dimensions
+
+# If using an image in float32 form (0-1), then the max h value is 360 <-- we do this
+# If using an image in uint8 form (0-255), then the max h value is 179
+CV2_HSV_H_MAX = 360.0
+
+# Flipping magic
+CV2_FLIP_VERTICAL = 0
+CV2_FLIP_HORIZONTAL = 1
+CV2_FLIP_BOTH = -1
+### END CV2 Constants ###
+
 
 ##### BENCHMARKING #####
+# Number of times to run the model on a random image as a warmup when benchmarking
+BENCHMARK_N_WARMUPS = 25
 # Benchmarking (MODEL_ONLY is equivalent to official darknet benchmark fps)
 NO_BENCHMARK = 0 # No benchmarking
 MODEL_ONLY = 1 # Fps running the model only (recommended)
 MODEL_WITH_PP = 2 # Fps running pre/post-processing + MODEL_ONLY
 MODEL_WITH_IO = 3 # Fps running file io + MODEL_WITH_PP
 
-##### BBOX DRAWING #####
-# Specific to draw_detections
-BBOX_INCLUDE_CLASS_CONF = True
 
-# Specific to both draw_detections and draw_annotations
-BBOX_COLORS = ( (255,0,255),(0,0,255),(0,255,255),(0,255,0),(255,255,0),(255,100,100) )
-COLOR_BLACK = (0,0,0)
+##### CONFIGURATION FILE CONSTANTS #####
+DARKNET_CONFIG_BLOCK_TYPE = "DARKNET_CONFIG_BLOCK_TYPE"
 
-# Rest are specific to draw_bbox_inplace
-BBOX_FONT = cv2.FONT_HERSHEY_SIMPLEX
-BBOX_RECT_THICKNESS = 1
-BBOX_FONT_SCALE = 0.8
-BBOX_FONT_THICKNESS = 1
-CV2_RECT_FILL = -1
 
-BBOX_TEXT_LEFT_PAD = 2
-BBOX_TEXT_RIGHT_PAD = 2
-BBOX_TEXT_TOP_PAD = 5
-BBOX_TEXT_BOT_PAD = 6
+##### NET BLOCK #####
+NET_BATCH_DEF = 1
+NET_SUBDIV_DEF = 1
+NET_W_DEF = 416
+NET_H_DEF = 416
+NET_CH_DEF = 3
+NET_MOMEN_DEF = 0.9
+NET_DECAY_DEF = 0.0001
+NET_ANG_DEF = 0
+NET_SATUR_DEF = 1
+NET_EXPOS_DEF = 1
+NET_HUE_DEF = 0
+NET_FLIP_DEF = 1
+NET_LR_DEF = 0.001
+NET_BURN_DEF = 0
+NET_POW_DEF = 4
+NET_MAX_BAT_DEF = 500
+NET_POL_DEF = POLICY_CONSTANT
+NET_STEP_DEF = (1,)
+NET_SCALE_DEF = (1,)
+NET_MOSAIC_DEF = 0
+NET_RESIZE_STEP_DEF = 32
+# Note: present on yolo_layer but moved to net_block when parsing configs
+NET_JITTER_DEF = 0.2
+NET_RAND_DEF = 0
+NET_RESIZE_DEF = 1.0
+NET_NMS_DEF = GREEDY_NMS
+### END NET BLOCK ###
 
-CV2_TEXT_SIZE_W = 0
-CV2_TEXT_SIZE_H = 1
+
+##### CONVOLUTIONAL CONSTANTS #####
+# Layer init defaults
+CONV_FILT_DEF = 1
+CONV_SIZE_DEF = 1
+CONV_STRIDE_DEF = 1
+CONV_BN_DEF = 0
+CONV_PAD_DEF = 0
+CONV_ACTIV_DEF = "linear"
+
+
+##### SHORTCUT CONSTANTS #####
+# Layer init defaults
+SHCT_ACTIV_DEF = "linear"
+
+
+##### MAXPOOL CONSTANTS #####
+MAXPL_SIZE_DEF = 1
+MAXPL_STRIDE_DEF = 1
+MAXPL_PAD_DEF = MAXPL_SIZE_DEF - 1
+
+
+##### UPSAMPLE CONSTANTS #####
+UPSAMP_STRIDE_DEF = 2
+UPSAMP_MODE_DEF = "nearest" # Type of interpolation for upsampling
+
+
+##### YOLO CONSTANTS #####
+# Layer init defaults
+YOLO_NCLS_DEF = 20
+YOLO_NUM_DEF = 1
+YOLO_IGNORE_DEF = 0.5
+YOLO_TRUTH_DEF = 1.0
+YOLO_RANDOM_DEF = NET_RAND_DEF
+YOLO_JITTER_DEF = NET_JITTER_DEF
+YOLO_RESIZE_DEF = NET_RESIZE_DEF
+YOLO_SCALEXY_DEF = 1.0
+YOLO_IOU_THRESH_DEF = 1.0
+YOLO_CLS_NORM_DEF = 1.0
+YOLO_IOU_NORM_DEF = 1.0
+YOLO_IOU_LOSS_DEF = BBOX_MSE_LOSS
+YOLO_NMS_KIND_DEF = NET_NMS_DEF
+YOLO_BETA_NMS_DEF = 0.6
+YOLO_MAX_DELTA_DEF = sys.float_info.max
+
+# YOLO BBOX-specific attributes
+YOLO_TX = 0
+YOLO_TY = 1
+YOLO_TW = 2
+YOLO_TH = 3
+YOLO_OBJ = 4
+YOLO_N_BBOX_ATTRS = 5 # x,y,w,h,obj
+YOLO_CLASS_START = 5 # start of class confidences
+### END YOLO CONSTANTS ###
+
+
+##### OUTPUT CONSTANTS #####
+# Raw output dimensions from darknet model when in eval mode
+PREDS_BATCH_DIM = 0
+PREDS_N_PREDS_DIM = 1
+PREDS_ATTRS_DIM = 2
+
+# Output order for each extracted darknet detection
+DETECTION_X1 = 0
+DETECTION_Y1 = 1
+DETECTION_X2 = 2
+DETECTION_Y2 = 3
+DETECTION_CLASS_START = 4 # Class scores for the n classes
+### END OUTPUT CONSTANTS ###
+
+
+##### ANNOTATION CONSTANTS
+# Darknet bbox annotation format
+ANN_BBOX_X1 = 0
+ANN_BBOX_Y1 = 1
+ANN_BBOX_X2 = 2
+ANN_BBOX_Y2 = 3
+ANN_BBOX_CLASS = 4
+ANN_BBOX_N_ELEMS = 5 # Number of attributes for each annotation
+
+# Value for padding annotations for batched annotations
+ANN_PAD_VAL = -1
+
+# Coco bbox annotation format
+COCO_ANN_BBOX_X = 0
+COCO_ANN_BBOX_Y = 1
+COCO_ANN_BBOX_W = 2
+COCO_ANN_BBOX_H = 3
+### END ANNOTATION CONSTANTS ###
+
 
 ##### COCO EVAL #####
 COCO_ANN_TYPE_SEGM = "segm"
@@ -86,169 +242,32 @@ ALL_COCO_STAT_NAMES = (
     COCO_STAT_10_NAME, COCO_STAT_11_NAME
 )
 N_COCO_STATS = len(ALL_COCO_STAT_NAMES)
+### END COCO EVAL ###
 
-##### Supported policies #####
-POLICY_CONSTANT = "constant"
-POLICY_STEPS = "steps"
 
-##### SUPPORTED NMS TYPES #####
-GREEDY_NMS = "greedynms"
+##### BBOX DRAWING #####
+# Specific to draw_detections
+BBOX_INCLUDE_CLASS_CONF = True
 
-##### Supported Bbox loss #####
-BBOX_MSE_LOSS = "mse"
-BBOX_CIOU_LOSS = "ciou"
+BBOX_COLORS = ( (255,0,255),(0,0,255),(0,255,255),(0,255,0),(255,255,0),(255,100,100) )
+COLOR_BLACK = (0,0,0)
 
-##### NET BLOCK #####
-NET_BATCH_DEF = 1
-NET_SUBDIV_DEF = 1
-NET_W_DEF = 416
-NET_H_DEF = 416
-NET_CH_DEF = 3
-NET_MOMEN_DEF = 0.9
-NET_DECAY_DEF = 0.0001
-NET_ANG_DEF = 0
-NET_SATUR_DEF = 1
-NET_EXPOS_DEF = 1
-NET_HUE_DEF = 0
-NET_FLIP_DEF = 1
-NET_LR_DEF = 0.001
-NET_BURN_DEF = 0
-NET_POW_DEF = 4
-NET_MAX_BAT_DEF = 500
-NET_POL_DEF = POLICY_CONSTANT
-NET_STEP_DEF = (1,)
-NET_SCALE_DEF = (1,)
-NET_MOSAIC_DEF = 0
-NET_RESIZE_STEP_DEF = 32
-# Note: present on yolo_layer but moved to net_block when parsing configs
-NET_JITTER_DEF = 0.2
-NET_RAND_DEF = 0
-NET_RESIZE_DEF = 1.0
-NET_NMS_DEF = GREEDY_NMS
+BBOX_FONT = cv2.FONT_HERSHEY_SIMPLEX
+BBOX_RECT_THICKNESS = 1
+BBOX_FONT_SCALE = 0.8
+BBOX_FONT_THICKNESS = 1
+CV2_RECT_FILL = -1
 
-##### CONVOLUTIONAL DEFAULT CONSTANTS #####
-# Layer init defaults
-CONV_FILT_DEF = 1
-CONV_SIZE_DEF = 1
-CONV_STRIDE_DEF = 1
-CONV_BN_DEF = 0
-CONV_PAD_DEF = 0
-CONV_ACTIV_DEF = "linear"
+BBOX_TEXT_LEFT_PAD = 2
+BBOX_TEXT_RIGHT_PAD = 2
+BBOX_TEXT_TOP_PAD = 5
+BBOX_TEXT_BOT_PAD = 6
 
-##### SHORTCUT CONSTANTS #####
-# Layer init defaults
-SHCT_ACTIV_DEF = "linear"
+CV2_TEXT_SIZE_W = 0
+CV2_TEXT_SIZE_H = 1
+### END BBOX DRAWING ###
 
-##### MAXPOOL CONSTANTS #####
-MAXPL_SIZE_DEF = 1
-MAXPL_STRIDE_DEF = 1
-MAXPL_PAD_DEF = MAXPL_SIZE_DEF - 1
-
-##### UPSAMPLE CONSTANTS #####
-UPSAMP_STRIDE_DEF = 2
-
-##### YOLO CONSTANTS #####
-# Layer init defaults
-YOLO_NCLS_DEF = 20
-YOLO_NUM_DEF = 1
-YOLO_IGNORE_DEF = 0.5
-YOLO_TRUTH_DEF = 1.0
-YOLO_RANDOM_DEF = NET_RAND_DEF
-YOLO_JITTER_DEF = NET_JITTER_DEF
-YOLO_RESIZE_DEF = NET_RESIZE_DEF
-YOLO_SCALEXY_DEF = 1.0
-YOLO_IOU_THRESH_DEF = 1.0
-YOLO_CLS_NORM_DEF = 1.0
-YOLO_IOU_NORM_DEF = 1.0
-YOLO_IOU_LOSS_DEF = BBOX_MSE_LOSS
-YOLO_NMS_KIND_DEF = NET_NMS_DEF
-YOLO_BETA_NMS_DEF = 0.6
-YOLO_MAX_DELTA_DEF = sys.float_info.max
-
-# YOLO BBOX-specific attributes
-YOLO_TX = 0
-YOLO_TY = 1
-YOLO_TW = 2
-YOLO_TH = 3
-
-# YOLO confidence scores
-YOLO_OBJ = 4
-YOLO_CLASS_START = 5
-
-# Raw output dimensions from darknet model when in eval mode
-PREDS_BATCH_DIM = 0
-PREDS_N_PREDS_DIM = 1
-PREDS_ATTRS_DIM = 2
-
-# Output order for each extracted darknet detection
-DETECTION_X1 = 0
-DETECTION_Y1 = 1
-DETECTION_X2 = 2
-DETECTION_Y2 = 3
-DETECTION_CLASS_START = 4 # Class scores for the n classes
-
-# Darknet bbox annotation format
-ANN_BBOX_X1 = 0
-ANN_BBOX_Y1 = 1
-ANN_BBOX_X2 = 2
-ANN_BBOX_Y2 = 3
-ANN_BBOX_CLASS = 4
-ANN_BBOX_N_ELEMS = 5 # Number of attributes for each annotation
-
-# Value for padding annotations for batched annotations
-ANN_PAD_VAL = -1
-
-# Coco bbox annotation format
-COCO_ANN_BBOX_X = 0
-COCO_ANN_BBOX_Y = 1
-COCO_ANN_BBOX_W = 2
-COCO_ANN_BBOX_H = 3
-
-# Other
-YOLO_N_BBOX_ATTRS = 5 # x,y,w,h,obj
-
-##### CONFIGURATION FILE CONSTANTS #####
-DARKNET_CONFIG_BLOCK_TYPE = "DARKNET_CONFIG_BLOCK_TYPE"
-
-##### PREPROCESSING #####
-LETTERBOX_COLOR = 0.5
 
 ##### MISC #####
 SEPARATOR = "========================="
-
-IMG_CHANNEL_COUNT = 3
-
-INPUT_BATCH_DIM = 0
-INPUT_CHANNEL_DIM = 1
-INPUT_H_DIM = 2
-INPUT_W_DIM = 3
-
-CV2_H_DIM = 0
-CV2_W_DIM = 1
-CV2_C_DIM = 2
-CV2_N_DIMS = 3 # Number of cv2 dimensions
-
-# If using an image in float32 form (0-1), then the max h value is 360 <-- we do this
-# If using an image in uint8 form (0-255), then the max h value is 179
-CV2_HSV_H_MAX = 360.0
-
-# Flipping magic
-CV2_FLIP_VERTICAL = 0
-CV2_FLIP_HORIZONTAL = 1
-CV2_FLIP_BOTH = -1
-
-# Offset forces mosaic to not place the cut point more than 20% into any sidek
-MOSAIC_MIN_OFFSET = 0.2
-
-TENSOR_C_DIM = 0
-TENSOR_H_DIM = 1
-TENSOR_W_DIM = 2
-
-BBOX_X1 = 0
-BBOX_Y1 = 1
-BBOX_X2 = 2
-BBOX_Y2 = 3
-BBOX_N_ELEMS = 4
-
-# For printing on the same line
 CARRIAGE_RETURN = "\r"

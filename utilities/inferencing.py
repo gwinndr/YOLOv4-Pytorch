@@ -33,7 +33,7 @@ def inference(model, input_tensor, obj_thresh):
     return detections
 
 # inference_on_image
-def inference_on_image(model, image, network_dim, obj_thresh, letterbox, show_img=False):
+def inference_on_image(model, image, network_dim, obj_thresh, letterbox=False, show_img=False):
     """
     ----------
     Author: Damon Gwinn (gwinndr)
@@ -46,7 +46,7 @@ def inference_on_image(model, image, network_dim, obj_thresh, letterbox, show_im
     """
 
     # Preprocessing
-    input_tensor, img_info = preprocess_image_eval(image, network_dim, letterbox, show_img=show_img)
+    input_tensor, img_info = preprocess_image_eval(image, network_dim, letterbox=letterbox, show_img=show_img)
     input_tensor = input_tensor.unsqueeze(0) # batch dim
 
     detections = inference(model, input_tensor, obj_thresh)[0]
@@ -58,7 +58,7 @@ def inference_on_image(model, image, network_dim, obj_thresh, letterbox, show_im
     return detections
 
 # inference_video_to_video
-def inference_video_to_video(model, video_in, video_out, class_names, network_dim, obj_thresh, letterbox, benchmark=NO_BENCHMARK, verbose=False):
+def inference_video_to_video(model, video_in, video_out, class_names, network_dim, obj_thresh, letterbox=False, benchmark=NO_BENCHMARK, verbose=False):
     """
     ----------
     Author: Damon Gwinn (gwinndr)
@@ -98,7 +98,7 @@ def inference_video_to_video(model, video_in, video_out, class_names, network_di
                 start_time = time.time()
 
             # Preprocessing
-            x, img_info = preprocess_image_eval(frame, network_dim, letterbox)
+            x, img_info = preprocess_image_eval(frame, network_dim, letterbox=letterbox)
             x = x.unsqueeze(0) # batch dim
 
             # start MODEL_ONLY

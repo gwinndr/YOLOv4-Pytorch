@@ -10,7 +10,7 @@ from utilities.image_info import ImageInfo
 from utilities.augmentations import letterbox_image, image_resize, augment_image, create_mosaic
 
 # preprocess_image_eval
-def preprocess_image_eval(image, target_dim, letterbox, show_img=False, force_cpu=False):
+def preprocess_image_eval(image, target_dim, letterbox=False, show_img=False, force_cpu=False):
     """
     ----------
     Author: Damon Gwinn (gwinndr)

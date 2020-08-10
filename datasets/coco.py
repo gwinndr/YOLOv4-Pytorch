@@ -256,7 +256,7 @@ def coco_evaluate_bbox(coco_dataset, model, obj_thresh, max_imgs=0):
 
             # Inferencing on coco image
             image = coco_dataset.load_image_by_id(img_id)
-            detections = inference_on_image(model, image, network_dim, obj_thresh, letterbox)
+            detections = inference_on_image(model, image, network_dim, obj_thresh, letterbox=letterbox)
 
             # Converting yolo detections to coco detection format (appends to model_dts)
             detections_to_coco_format(detections, img_id, model_dts)

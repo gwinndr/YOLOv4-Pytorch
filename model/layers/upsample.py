@@ -14,7 +14,7 @@ class UpsampleLayer(nn.Module):
     """
 
     # __init__
-    def __init__(self, stride=UPSAMP_STRIDE_DEF):
+    def __init__(self, stride=UPSAMP_STRIDE_DEF, mode=UPSAMP_MODE_DEF):
         super(UpsampleLayer, self).__init__()
 
         self.has_learnable_params = False
@@ -22,7 +22,8 @@ class UpsampleLayer(nn.Module):
         self.is_output_layer = False
 
         self.stride = stride
-        self.upsample = nn.Upsample(scale_factor=self.stride, mode=UPSAMPLE_MODE)
+        self.mode = mode
+        self.upsample = nn.Upsample(scale_factor=stride, mode=mode)
 
     # forward
     def forward(self, x):
@@ -47,5 +48,5 @@ class UpsampleLayer(nn.Module):
         """
 
         return \
-            "UPSM: stride: %d" % \
-            (self.stride)
+            "UPSM: stride: %d  mode: %s" % \
+            (self.stride, self.mode)
