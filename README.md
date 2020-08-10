@@ -37,9 +37,9 @@ Currently, Alexey Bochkovskiy's [Darknet framework](https://github.com/AlexeyAB/
 ## How we got here
 Short story. After wrapping up my graduate degree, I had the entire summer off until starting a new job. Paradise got boring after about 2 weeks and I decided I needed something to do. That something was YOLO. 
 
-This is not the first time I've implemented YOLO, but I couldn't share my other one so here we are. The nice thing about not being on a company's time, is that I could pretty much develop this "from the ground up". Without a time and money crunch, I could really take my time with certain things which is always a plus. Of course this can be a double edged sword because it's really easy to be lazy and do nothing all day when there's no one to wave money in your face, but what can you do? 
+This is not the first time I've implemented YOLO, but I couldn't share my other one so here we are. The nice thing about not being on a company's time, is that I could pretty much develop this "from the ground up". Without a time and money crunch, I could really take my time with certain things which is always a plus. Of course this can be a double edged sword because it's really easy to be lazy and do nothing all day when there's no one to wave money in your face.
 
-Another nice thing, is this time around, I developed this alongside Alexey's Darknet. This was a good idea, as I discovered that I had actually done jitter wrong the first time around (Josh, you should fix this if you haven't). All in all, this was fun, and is a nice little gem for my Github account.
+Another nice thing, is this time around, I developed this alongside Alexey's Darknet. This was a good idea, as I discovered that I had actually done jitter wrong the first time around (Josh, you should fix this if you haven't).
 
 TLDR: I was bored, and this is sort of a capstone project to my collegiate career. Hope you like it :-).
 
