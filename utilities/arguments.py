@@ -18,11 +18,11 @@ def parse_train_args():
     parser.add_argument("-epoch_mod", type=int, default=1, help="Defines how many epochs must occur before model weights are saved. Defaults to every epoch. Overidden if --only_save_last")
     parser.add_argument("--only_save_last", action="store_true", help="Only save the weights after the very last batch (not recommended)")
 
-    parser.add_argument("-train_imgs", type=str, default="D:/Datasets/COCO/2017/train2017/", help="Folder containing training images")
-    parser.add_argument("-train_anns", type=str, default="D:/Datasets/COCO/2017/annotations/instances_train2017.json", help="File containing bbox annotations for training images")
+    parser.add_argument("-train_imgs", type=str, default="./COCO/2017/train2017/", help="Folder containing training images")
+    parser.add_argument("-train_anns", type=str, default="./COCO/2017/annotations/instances_train2017.json", help="File containing bbox annotations for training images")
 
-    parser.add_argument("-val_imgs", type=str, default="D:/Datasets/COCO/2017/val2017/", help="Folder containing validation images")
-    parser.add_argument("-val_anns", type=str, default="D:/Datasets/COCO/2017/annotations/instances_val2017.json", help="File containing bbox annotations for validation images")
+    parser.add_argument("-val_imgs", type=str, default="./COCO/2017/val2017/", help="Folder containing validation images")
+    parser.add_argument("-val_anns", type=str, default="./COCO/2017/annotations/instances_val2017.json", help="File containing bbox annotations for validation images")
     parser.add_argument("-max_imgs", type=int, default=-1, help="Specifies upper bound on the number of validation images processed. If <= 0, all validation images are processed.")
 
     parser.add_argument("--batch_csv", action="store_true", help="Reports batch loss with a csv file")
