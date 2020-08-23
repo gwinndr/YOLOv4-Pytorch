@@ -2,6 +2,8 @@
 Currently supports Pytorch 1.5.1  
 Verified to work with Yolov4 and Yolov3 (probably Yolov2 as well)
 
+Please click on [Releases](https://github.com/gwinndr/YOLOv4-Pytorch/releases) to get the most up to date and stable release.
+
 ![Dog Detection](https://lh3.googleusercontent.com/OyZTbeMh7E5C5LUMmWkfdgxFs38FTV7KQlHGir9Y-HNE1VJhnh80iMmem2Emdaq4P_u-jKSOFlQJ1PBut3mdiIZhbQqrqPQ7JNrZd9p-tkYDKadOd_leS7b2GIIwdO-L2GH7u_E1CQ=w2400 "Dog Detection")
 
 ## Requirements
