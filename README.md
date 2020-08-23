@@ -1,6 +1,8 @@
 # Darknet in Pytorch
 Currently supports Pytorch 1.5.1  
-Verified to work with Yolov4 and Yolov3 (probably Yolov2 as well)
+Verified to work with Yolov4 and Yolov3 (probably Yolov2 as well)  
+
+Please give the full error message when reporting an issue (contains reproduction information)
 
 Please click on [Releases](https://github.com/gwinndr/YOLOv4-Pytorch/releases) to get the most up to date and stable release.
 
