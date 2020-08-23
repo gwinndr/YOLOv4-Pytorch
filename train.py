@@ -230,7 +230,7 @@ def main():
         # Finished an epoch, evaluate mAP and mAR
         if(progress_epoch >= len(train_set)):
             epochs_trained += 1
-            progress_epoch = 0
+            progress_epoch -= len(train_set)
 
             print("----- Finished epoch -----")
             print("Num epochs trained:", epochs_trained)
