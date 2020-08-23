@@ -88,12 +88,20 @@ class CocoDataset(Dataset):
             images = (i1, i2, i3, i4)
             anns = (a1, a2, a3, a4)
 
-            img_tensor, anns_partial = preprocess_images_mosaic(images, anns, netblock, self.input_dim, force_cpu=True)
+            try:
+                img_tensor, anns_partial = preprocess_images_mosaic(images, anns, netblock, self.input_dim, force_cpu=True)
+            except:
+                print("CocoDataset: Mosaic exception on images:", (img_id, id2, id3, id4))
+                raise
 
         # Normal preprocessing
         else:
-            img_tensor, anns_partial = preprocess_image_train(image, anns, self.netblock, self.input_dim,
-                                        augment=self.augment, letterbox=self.letterbox, force_cpu=True)
+            try:
+                img_tensor, anns_partial = preprocess_image_train(image, anns, self.netblock, self.input_dim,
+                                            augment=self.augment, letterbox=self.letterbox, force_cpu=True)
+            except:
+                print("CocoDataset: Augmentation exception on image:", img_id)
+                raise
 
         n_anns = len(anns_partial)
         if(n_anns > self.max_anns):

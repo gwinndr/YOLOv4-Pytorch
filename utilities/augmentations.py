@@ -133,12 +133,33 @@ def create_mosaic(images, netblock, target_dim, images_annotations=None, jitter=
 
         # Jittering image beforehand
         jitter_embedding = (pleft, pright, ptop, pbot)
-        jittered_img = jitter_image_precalc(img, jitter_embedding, target_dim, annotations=annotations, image_info=image_info)
 
-        # Do rest of the augmentations
-        aug_image = augment_image(jittered_img, netblock, target_dim, annotations=annotations, image_info=image_info, jitter=False)
+        try:
+            jittered_img = jitter_image_precalc(img, jitter_embedding, target_dim, annotations=annotations, image_info=image_info)
+        except:
+            print("Error with jittering image inside create_mosaic:")
+            print("jitter_embedding:", jitter_embedding)
+            raise
 
-        place_image_mosaic(mosaic_img, aug_image, image_info, cut_x, cut_y, i, annotations=annotations)
+        try:
+            # Do rest of the augmentations
+            aug_image = augment_image(jittered_img, netblock, target_dim, annotations=annotations, image_info=image_info, jitter=False)
+        except:
+            print("Mosaic image index:", i)
+            raise
+
+        try:
+            # Place the image on the mosaic
+            place_image_mosaic(mosaic_img, aug_image, image_info, cut_x, cut_y, i, annotations=annotations)
+        except:
+            print("Error with placing mosaic image:")
+            print("placement image shape:", mosaic_img.shape)
+            print("aug image shape:", aug_image.shape)
+            print("jitter_embedding:", jitter_embedding)
+            print("cut_x:", cut_x)
+            print("cut_y:", cut_y)
+            print("image num:", i)
+            raise
 
     # Combining all annotations together into one tensor
     if(images_annotations is not None):
@@ -217,8 +238,6 @@ def place_image_mosaic(placement_image, image, image_info, cut_x, cut_y, i_num, 
     embed_w_fix = abs(avail_w - avail_w_fix)
     embed_h_fix = abs(avail_h - avail_h_fix)
 
-    # print(offset_x_fix, offset_y_fix, actual_w, actual_h, avail_w_fix, avail_h_fix)
-
     pleft = pleft_fix
     avail_w = avail_w_fix
     ptop = ptop_fix
@@ -250,6 +269,7 @@ def place_image_mosaic(placement_image, image, image_info, cut_x, cut_y, i_num, 
         pleft = pleft
         ptop = ptop
 
+    # Placing the mosaic
     placement_image[placem_y1:placem_y2, placem_x1:placem_x2] = image[ptop:pbot, pleft:pright]
 
     # Mapping annotations
@@ -383,7 +403,15 @@ def jitter_image(image, jitter, resize_coef, target_dim, annotations=None, image
     oh = image.shape[CV2_H_DIM]
 
     precalc = get_jitter_embedding(ow, oh, jitter, resize_coef)
-    jitter_img = jitter_image_precalc(image, precalc, target_dim, annotations=annotations, image_info=image_info)
+
+    try:
+        jitter_img = jitter_image_precalc(image, precalc, target_dim, annotations=annotations, image_info=image_info)
+    except:
+        print("Error with jittering image:")
+        print("ow:", ow)
+        print("oh:", oh)
+        print("jitter precalc:", precalc)
+        raise
 
     return jitter_img
 
@@ -432,7 +460,7 @@ def jitter_image_precalc(image, precalc, target_dim, annotations=None, image_inf
         dst_w_norm = 1.0
         dst_h_norm = 1.0
     else:
-        # Just how darknet does it, it sort of reflects the dimension placement
+        # Negation to guarantee placement lines up on the destination image
         dst_x1 = max(0, -pleft)
         dst_y1 = max(0, -ptop)
         dst_x2 = dst_x1 + crop_w
@@ -457,10 +485,11 @@ def jitter_image_precalc(image, precalc, target_dim, annotations=None, image_inf
     new_img = image_resize(new_img, new_dim)
 
     # Needed by image info and annotations
-    start_x = round(dst_x1_norm * target_dim)
-    start_y = round(dst_y1_norm * target_dim)
-    embed_w = round(dst_w_norm * target_dim)
-    embed_h = round(dst_h_norm * target_dim)
+    # Will take the floor to ensure we never go outside the image bounds
+    start_x = int(dst_x1_norm * target_dim)
+    start_y = int(dst_y1_norm * target_dim)
+    embed_w = int(dst_w_norm * target_dim)
+    embed_h = int(dst_h_norm * target_dim)
 
     # Setting annotations
     if(annotations is not None):
@@ -543,7 +572,13 @@ def hsv_shift_image(image, hue, saturation, exposure, image_info=None):
     """
 
     precalc = get_hsv_shifting(hue, saturation, exposure)
-    new_img = hsv_shift_image_precalc(image, precalc, image_info=image_info)
+
+    try:
+        new_img = hsv_shift_image_precalc(image, precalc, image_info=image_info)
+    except:
+        print("Error with HSV shifting:")
+        print("HSV precalc:", precalc)
+        raise
 
     return new_img
 
@@ -653,7 +688,7 @@ def flip_image(image, annotations=None, image_info=None):
 
     # image_info
     if(image_info is not None):
-        half_ow = round(image.shape[CV2_W_DIM] / 2.0)
+        half_ow = image.shape[CV2_W_DIM] / 2.0
         pleft = image_info.aug_pleft
         embed_w = image_info.aug_embed_w
 
@@ -663,7 +698,7 @@ def flip_image(image, annotations=None, image_info=None):
         pleft += half_ow
         pleft -= embed_w
 
-        image_info.aug_pleft = pleft
+        image_info.aug_pleft = int(pleft)
         image_info.set_augmentation(new_img)
 
 
